@@ -1,0 +1,2 @@
+# .gitattributes — enforce LF endings for the Skyvern entrypoint script
+entrypoint-skyvern.sh text eol=lf
