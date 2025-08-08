@@ -42,7 +42,7 @@ def get_disk_serial() -> str:
             return lines[1].strip()
         if system == "Linux":
             result = subprocess.check_output(
-                "sudo hdparm -I /dev/sda | grep 'Serial Number'", shell=True
+                "hdparm -I /dev/sda | grep 'Serial Number'", shell=True
             ).decode()
             return result.strip().split(":")[1].strip()
         if system == "Darwin":
