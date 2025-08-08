@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 import { BrowserSession } from "@/routes/browserSession/BrowserSession";
 import { PageLayout } from "./components/PageLayout";
@@ -25,23 +26,47 @@ import { WorkflowRunOutput } from "./routes/workflows/workflowRun/WorkflowRunOut
 import { WorkflowRunOverview } from "./routes/workflows/workflowRun/WorkflowRunOverview";
 import { WorkflowRunRecording } from "./routes/workflows/workflowRun/WorkflowRunRecording";
 import { DebugStoreProvider } from "@/store/DebugStoreContext";
+import { LoginPage } from "./routes/login/LoginPage";
+import { RegisterPage } from "./routes/register/RegisterPage";
+import { LandingPage } from "./routes/landing/LandingPage";
+import { useAuthStore } from "@/store/AuthStore";
+
+const ProtectedRoot = () => {
+  const token = useAuthStore((s) => s.token);
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+  return (
+    <DebugStoreProvider>
+      <RootLayout />
+    </DebugStoreProvider>
+  );
+};
 
 const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
+  },
   {
     path: "browser-session/:browserSessionId",
     element: <BrowserSession />,
   },
   {
-    path: "/",
-    element: (
-      <DebugStoreProvider>
-        <RootLayout />
-      </DebugStoreProvider>
-    ),
+    path: "/dashboard",
+    element: <ProtectedRoot />,
     children: [
       {
         index: true,
-        element: <Navigate to="/discover" />,
+        element: <Navigate to="discover" />,
       },
       {
         path: "tasks",

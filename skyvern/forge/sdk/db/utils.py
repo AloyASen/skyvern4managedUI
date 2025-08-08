@@ -237,6 +237,7 @@ def convert_to_workflow(workflow_model: WorkflowModel, debug_enabled: bool = Fal
     return Workflow(
         workflow_id=workflow_model.workflow_id,
         organization_id=workflow_model.organization_id,
+        user_id=workflow_model.user_id,
         title=workflow_model.title,
         workflow_permanent_id=workflow_model.workflow_permanent_id,
         webhook_callback_url=workflow_model.webhook_callback_url,
@@ -273,6 +274,7 @@ def convert_to_workflow_run(
         parent_workflow_run_id=workflow_run_model.parent_workflow_run_id,
         workflow_id=workflow_run_model.workflow_id,
         organization_id=workflow_run_model.organization_id,
+        user_id=workflow_run_model.user_id,
         browser_session_id=workflow_run_model.browser_session_id,
         status=WorkflowRunStatus[workflow_run_model.status],
         failure_reason=workflow_run_model.failure_reason,

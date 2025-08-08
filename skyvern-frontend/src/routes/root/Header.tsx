@@ -1,7 +1,8 @@
 import { DiscordLogoIcon } from "@radix-ui/react-icons";
 import GitHubButton from "react-github-btn";
-import { Link, useMatch, useSearchParams } from "react-router-dom";
+import { Link, useMatch, useNavigate, useSearchParams } from "react-router-dom";
 import { NavigationHamburgerMenu } from "./NavigationHamburgerMenu";
+import { useAuthStore } from "@/store/AuthStore";
 
 function Header() {
   const [searchParams] = useSearchParams();
@@ -11,15 +12,26 @@ function Header() {
     location.pathname.includes("debug") ||
     embed === "true";
 
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const navigate = useNavigate();
+
   if (match) {
     return null;
   }
+
+  const handleLogout = () => {
+    setAuth(null, null);
+    navigate("/login");
+  };
 
   return (
     <header>
       <div className="flex h-24 items-center px-6">
         <NavigationHamburgerMenu />
         <div className="ml-auto flex gap-4">
+          <button onClick={handleLogout} className="text-sm underline">
+            Logout
+          </button>
           <Link
             to="https://discord.com/invite/fG2XXEuQX3"
             target="_blank"

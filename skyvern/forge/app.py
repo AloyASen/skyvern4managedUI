@@ -2,6 +2,7 @@ from typing import Awaitable, Callable
 
 from anthropic import AsyncAnthropic, AsyncAnthropicBedrock
 from fastapi import FastAPI
+from jose import JWTError, jwt
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 
 from skyvern.forge.agent import ForgeAgent
@@ -74,9 +75,44 @@ WORKFLOW_SERVICE = WorkflowService()
 AGENT_FUNCTION = AgentFunction()
 PERSISTENT_SESSIONS_MANAGER = PersistentSessionsManager(database=DATABASE)
 scrape_exclude: ScrapeExcludeFunc | None = None
-authentication_function: Callable[[str], Awaitable[Organization]] | None = None
+authentication_function: Callable[[str], Awaitable[Organization | None]] | None = None
 authenticate_user_function: Callable[[str], Awaitable[str | None]] | None = None
 setup_api_app: Callable[[FastAPI], None] | None = None
+
+
+async def _decode_user_token(token: str) -> str | None:
+    """Decode a JWT user token and return the user identifier."""
+    try:
+        payload = jwt.decode(
+            token,
+            SettingsManager.get_settings().SECRET_KEY,
+            algorithms=[SettingsManager.get_settings().SIGNATURE_ALGORITHM],
+        )
+        return str(payload.get("sub"))
+    except JWTError:
+        return None
+
+
+authenticate_user_function = _decode_user_token
+
+
+async def _authenticate_and_get_org(token: str) -> Organization | None:
+    """Resolve a user's organization from a JWT access token.
+
+    Args:
+        token: Encoded JWT provided by the client.
+
+    Returns:
+        The user's organization if authentication succeeds, otherwise ``None``.
+    """
+
+    user_id = await _decode_user_token(token)
+    if not user_id:
+        return None
+    return await DATABASE.get_or_create_user_org(user_id)
+
+
+authentication_function = _authenticate_and_get_org
 
 agent = ForgeAgent()
 

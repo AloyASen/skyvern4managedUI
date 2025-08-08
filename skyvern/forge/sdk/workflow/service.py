@@ -138,17 +138,27 @@ class WorkflowService:
         is_template_workflow: bool = False,
         version: int | None = None,
         max_steps_override: int | None = None,
+        user_id: str | None = None,
         parent_workflow_run_id: str | None = None,
     ) -> WorkflowRun:
-        """
-        Create a workflow run and its parameters. Validate the workflow and the organization. If there are missing
-        parameters with no default value, mark the workflow run as failed.
-        :param request_id: The request id for the workflow run.
-        :param workflow_request: The request body for the workflow run, containing the parameters and the config.
-        :param workflow_id: The workflow id to run.
-        :param organization_id: The organization id for the workflow.
-        :param max_steps_override: The max steps override for the workflow run, if any.
-        :return: The created workflow run.
+        """Create and persist a workflow run.
+
+        Validates the workflow definition and organization before creating the run.
+        Missing parameters without defaults will mark the run as failed.
+
+        Args:
+            request_id: Optional identifier for tracing the request.
+            workflow_request: Input definition and config for the workflow run.
+            workflow_permanent_id: Permanent identifier of the workflow.
+            organization: Organization under which the workflow executes.
+            is_template_workflow: Whether the workflow is a template.
+            version: Specific workflow version to execute.
+            max_steps_override: Optional override for maximum allowed steps.
+            user_id: User initiating the run.
+            parent_workflow_run_id: Optional parent workflow run identifier.
+
+        Returns:
+            The created workflow run.
         """
         # Validate the workflow and the organization
         workflow = await self.get_workflow_by_permanent_id(
@@ -170,6 +180,7 @@ class WorkflowService:
             workflow_permanent_id=workflow_permanent_id,
             workflow_id=workflow_id,
             organization_id=organization.organization_id,
+            user_id=user_id,
             parent_workflow_run_id=parent_workflow_run_id,
         )
         LOG.info(
@@ -622,6 +633,7 @@ class WorkflowService:
         organization_id: str,
         title: str,
         workflow_definition: WorkflowDefinition,
+        user_id: str | None = None,
         description: str | None = None,
         proxy_location: ProxyLocation | None = None,
         max_screenshot_scrolling_times: int | None = None,
@@ -638,10 +650,38 @@ class WorkflowService:
         use_cache: bool = False,
         cache_project_id: str | None = None,
     ) -> Workflow:
+        """Persist a workflow definition for an organization.
+
+        Args:
+            organization_id: Owning organization identifier.
+            title: Human readable workflow title.
+            workflow_definition: Workflow structure and parameters.
+            user_id: Creator of the workflow.
+            description: Optional description of the workflow.
+            proxy_location: Proxy settings for execution.
+            max_screenshot_scrolling_times: Screenshot scroll limit.
+            webhook_callback_url: Optional callback URL.
+            totp_verification_url: URL for TOTP verification.
+            totp_identifier: Identifier for TOTP device.
+            persist_browser_session: Whether to persist browser sessions.
+            model: LLM model configuration.
+            workflow_permanent_id: Permanent workflow identifier.
+            version: Workflow version number.
+            is_saved_task: Whether workflow is a saved task.
+            status: Workflow publication status.
+            extra_http_headers: Additional HTTP headers.
+            use_cache: Enable caching for this workflow.
+            cache_project_id: Cache project identifier.
+
+        Returns:
+            The created workflow instance.
+        """
+
         return await app.DATABASE.create_workflow(
             title=title,
             workflow_definition=workflow_definition.model_dump(),
             organization_id=organization_id,
+            user_id=user_id,
             description=description,
             proxy_location=proxy_location,
             webhook_callback_url=webhook_callback_url,
@@ -811,8 +851,23 @@ class WorkflowService:
         workflow_permanent_id: str,
         workflow_id: str,
         organization_id: str,
+        user_id: str | None = None,
         parent_workflow_run_id: str | None = None,
     ) -> WorkflowRun:
+        """Persist a workflow run instance.
+
+        Args:
+            workflow_request: Configuration and parameters for the run.
+            workflow_permanent_id: Permanent workflow identifier.
+            workflow_id: Specific workflow version identifier.
+            organization_id: Organization associated with the run.
+            user_id: User initiating the workflow run.
+            parent_workflow_run_id: Optional parent workflow run ID.
+
+        Returns:
+            The created workflow run.
+        """
+
         # validate the browser session id
         if workflow_request.browser_session_id:
             browser_session = await app.DATABASE.get_persistent_browser_session(
@@ -826,6 +881,7 @@ class WorkflowService:
             workflow_permanent_id=workflow_permanent_id,
             workflow_id=workflow_id,
             organization_id=organization_id,
+            user_id=user_id,
             browser_session_id=workflow_request.browser_session_id,
             proxy_location=workflow_request.proxy_location,
             webhook_callback_url=workflow_request.webhook_callback_url,
@@ -1504,8 +1560,21 @@ class WorkflowService:
         self,
         organization: Organization,
         request: WorkflowCreateYAMLRequest,
+        user_id: str | None = None,
         workflow_permanent_id: str | None = None,
     ) -> Workflow:
+        """Create a workflow from a YAML request payload.
+
+        Args:
+            organization: Organization creating the workflow.
+            request: Parsed YAML workflow definition.
+            user_id: User creating the workflow.
+            workflow_permanent_id: Optional permanent identifier for versioning.
+
+        Returns:
+            The created workflow instance.
+        """
+
         organization_id = organization.organization_id
         LOG.info(
             "Creating workflow from request",
@@ -1524,8 +1593,9 @@ class WorkflowService:
                 workflow = await self.create_workflow(
                     title=request.title,
                     workflow_definition=WorkflowDefinition(parameters=[], blocks=[]),
-                    description=request.description,
                     organization_id=organization_id,
+                    user_id=user_id,
+                    description=request.description,
                     proxy_location=request.proxy_location,
                     webhook_callback_url=request.webhook_callback_url,
                     totp_verification_url=request.totp_verification_url,
@@ -1545,8 +1615,9 @@ class WorkflowService:
                 workflow = await self.create_workflow(
                     title=request.title,
                     workflow_definition=WorkflowDefinition(parameters=[], blocks=[]),
-                    description=request.description,
                     organization_id=organization_id,
+                    user_id=user_id,
+                    description=request.description,
                     proxy_location=request.proxy_location,
                     webhook_callback_url=request.webhook_callback_url,
                     totp_verification_url=request.totp_verification_url,
@@ -2159,9 +2230,21 @@ class WorkflowService:
         max_screenshot_scrolling_times: int | None = None,
         extra_http_headers: dict[str, str] | None = None,
         status: WorkflowStatus = WorkflowStatus.published,
+        user_id: str | None = None,
     ) -> Workflow:
-        """
-        Create a blank workflow with no blocks
+        """Create a blank workflow with no blocks.
+
+        Args:
+            organization: Organization owning the workflow.
+            title: Human readable workflow title.
+            proxy_location: Optional proxy configuration.
+            max_screenshot_scrolling_times: Screenshot scroll limit.
+            extra_http_headers: Additional HTTP headers for tasks.
+            status: Publication status of the workflow.
+            user_id: User creating the workflow.
+
+        Returns:
+            The newly created empty workflow.
         """
         # create a new workflow
         workflow_create_request = WorkflowCreateYAMLRequest(
@@ -2177,6 +2260,7 @@ class WorkflowService:
         )
         return await app.WORKFLOW_SERVICE.create_workflow_from_request(
             organization=organization,
+            user_id=user_id,
             request=workflow_create_request,
         )
 
