@@ -36,8 +36,8 @@ services:
       - ./log:/data/log
       - ./.streamlit:/app/.streamlit
       # Uncomment the following two lines if you want to connect to any local changes
-      # - ./skyvern:/app/skyvern
-      # - ./alembic:/app/alembic
+      - ./skyvern:/app/skyvern
+      - ./alembic:/app/alembic
     environment:
       - DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
       - BROWSER_TYPE=chromium-headful
@@ -57,7 +57,7 @@ services:
     # If you want to use OpenAI as your LLM provider, uncomment the following lines and fill in your OpenAI API key.
     # - ENABLE_OPENAI=true
     # - LLM_KEY=OPENAI_GPT4O
-    # - OPENAI_API_KEY=<your_openai_key>
+    # - OPENAI_API_KEY=YOUR_OPENAI_API_KEY
     #  Gemini Support:
     # Gemini is a new LLM provider that is currently in beta. You can use it by uncommenting the following lines and filling in your Gemini API key.
     # - LLM_KEY=GEMINI
