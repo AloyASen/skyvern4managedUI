@@ -3,7 +3,10 @@
 set -e
 
 # check alembic
-alembic upgrade head
+if ! alembic upgrade head; then
+    echo "Alembic upgrade failed" >&2
+    exit 1
+fi
 alembic check
 
 if [ ! -f ".streamlit/secrets.toml" ]; then
