@@ -18,7 +18,10 @@ services:
       timeout: 5s
       retries: 5
   skyvern:
-    image: public.ecr.aws/skyvern/skyvern:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skyvern:local
     restart: on-failure
     env_file:
       - .env
@@ -39,6 +42,9 @@ services:
       - DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
       - BROWSER_TYPE=chromium-headful
       - ENABLE_CODE_BLOCK=true
+      - INITIAL_USER_USERNAME=admin # maps to organization-1
+      - INITIAL_USER_PASSWORD=admin
+      - LICENSE_SERVER_URL=http://localhost:3000
       # - BROWSER_TYPE=cdp-connect
       # Use this command to start Chrome with remote debugging:
       # "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\chrome-cdp-profile" --no-first-run --no-default-browser-check
@@ -131,7 +137,10 @@ services:
       timeout: 5s
       retries: 5
   skyvern-ui:
-    image: public.ecr.aws/skyvern/skyvern-ui:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    image: skyvern-ui:local
     restart: on-failure
     ports:
       - 8080:8080

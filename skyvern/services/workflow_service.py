@@ -20,9 +20,22 @@ async def prepare_workflow(
     version: int | None = None,
     max_steps: int | None = None,
     request_id: str | None = None,
+    user_id: str | None = None,
 ) -> WorkflowRun:
-    """
-    Prepare a workflow to be run.
+    """Prepare a workflow to be executed.
+
+    Args:
+        workflow_id: Permanent identifier for the workflow.
+        organization: Organization running the workflow.
+        workflow_request: Definition and configuration for the run.
+        template: Whether the workflow is a template.
+        version: Specific workflow version to execute.
+        max_steps: Maximum steps override.
+        request_id: Optional identifier for tracing the request.
+        user_id: User initiating the workflow.
+
+    Returns:
+        The prepared workflow run record.
     """
     if template:
         if workflow_id not in await app.STORAGE.retrieve_global_workflows():
@@ -36,6 +49,7 @@ async def prepare_workflow(
         version=version,
         max_steps_override=max_steps,
         is_template_workflow=template,
+        user_id=user_id,
     )
 
     workflow = await app.WORKFLOW_SERVICE.get_workflow_by_permanent_id(
@@ -68,7 +82,27 @@ async def run_workflow(
     request_id: str | None = None,
     request: Request | None = None,
     background_tasks: BackgroundTasks | None = None,
+    user_id: str | None = None,
 ) -> WorkflowRun:
+    """Execute a workflow run asynchronously.
+
+    Args:
+        workflow_id: Permanent workflow identifier.
+        organization: Organization running the workflow.
+        workflow_request: Definition and configuration for the run.
+        template: Whether the workflow is a template.
+        version: Specific workflow version to execute.
+        max_steps: Maximum step override.
+        api_key: API key used for execution.
+        request_id: Optional request identifier.
+        request: Incoming HTTP request context.
+        background_tasks: FastAPI background tasks manager.
+        user_id: User initiating the workflow.
+
+    Returns:
+        The executed workflow run record.
+    """
+
     workflow_run = await prepare_workflow(
         workflow_id=workflow_id,
         organization=organization,
@@ -77,6 +111,7 @@ async def run_workflow(
         version=version,
         max_steps=max_steps,
         request_id=request_id,
+        user_id=user_id,
     )
 
     await AsyncExecutorFactory.get_executor().execute_workflow(

@@ -70,6 +70,7 @@ async def login(
     background_tasks: BackgroundTasks,
     login_request: LoginRequest,
     organization: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
     x_api_key: Annotated[str | None, Header()] = None,
 ) -> WorkflowRunResponse:
     # 1. create empty workflow with a credential parameter
@@ -80,6 +81,7 @@ async def login(
         max_screenshot_scrolling_times=login_request.max_screenshot_scrolling_times,
         extra_http_headers=login_request.extra_http_headers,
         status=WorkflowStatus.auto_generated,
+        user_id=current_user_id,
     )
     # 2. add a login block to the workflow
     label = "login"
@@ -155,6 +157,7 @@ async def login(
     )
     workflow = await app.WORKFLOW_SERVICE.create_workflow_from_request(
         organization=organization,
+        user_id=current_user_id,
         request=workflow_create_request,
         workflow_permanent_id=new_workflow.workflow_permanent_id,
     )

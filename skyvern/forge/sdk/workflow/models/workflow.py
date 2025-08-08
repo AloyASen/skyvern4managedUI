@@ -65,6 +65,7 @@ class WorkflowStatus(StrEnum):
 class Workflow(BaseModel):
     workflow_id: str
     organization_id: str
+    user_id: str | None = None
     title: str
     workflow_permanent_id: str
     version: int
@@ -111,6 +112,7 @@ class WorkflowRun(BaseModel):
     workflow_id: str
     workflow_permanent_id: str
     organization_id: str
+    user_id: str | None = None
     browser_session_id: str | None = None
     status: WorkflowRunStatus
     extra_http_headers: dict[str, str] | None = None

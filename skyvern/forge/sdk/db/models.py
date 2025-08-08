@@ -180,6 +180,20 @@ class OrganizationAuthTokenModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
+class UserClientModel(Base):
+    __tablename__ = "user_clients"
+
+    user_id = Column(String, primary_key=True)
+    organization_id = Column(String, ForeignKey("organizations.organization_id"), index=True, nullable=False)
+
+
+class UserModel(Base):
+    __tablename__ = "users"
+
+    username = Column(String, primary_key=True)
+    password_hash = Column(String, nullable=False)
+
+
 class ArtifactModel(Base):
     __tablename__ = "artifacts"
     __table_args__ = (
@@ -224,6 +238,7 @@ class WorkflowModel(Base):
 
     workflow_id = Column(String, primary_key=True, default=generate_workflow_id)
     organization_id = Column(String, ForeignKey("organizations.organization_id"))
+    user_id = Column(String, index=True, nullable=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     workflow_definition = Column(JSON, nullable=False)
@@ -263,6 +278,7 @@ class WorkflowRunModel(Base):
     # workfow runs with parent_workflow_run_id are nested workflow runs which won't show up in the workflow run history
     parent_workflow_run_id = Column(String, nullable=True, index=True)
     organization_id = Column(String, nullable=False, index=True)
+    user_id = Column(String, index=True, nullable=True)
     browser_session_id = Column(String, nullable=True, index=True)
     status = Column(String, nullable=False)
     failure_reason = Column(String)

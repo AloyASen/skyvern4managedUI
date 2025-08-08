@@ -66,7 +66,16 @@ Start the Skyvern service and UI
 skyvern run all
 ```
 
-Go to http://localhost:8080 and use the UI to run a task
+Go to http://localhost:8080 to access the landing page and click **Login**.
+Enter a product license key issued by your licensing server; the UI
+validates the key remotely and the backend provisions a user and
+organization on first use. All workflows, tasks, credentials and
+artifacts are tied to the returned `organizationID` (stored as
+`organization_id` in the database). The bootstrap credentials supplied
+via `INITIAL_USER_USERNAME`/`INITIAL_USER_PASSWORD` are mapped to
+*organization-1*; each new license login receives *organization-2*,
+*organization-3*, and so on. A logout button in the dashboard clears the
+session when finished.
 
 #### Code
 

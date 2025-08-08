@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     SIGNATURE_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # one week
 
+    # Initial user credentials for bootstrapping
+    INITIAL_USER_USERNAME: str | None = None
+    INITIAL_USER_PASSWORD: str | None = None
+    # Remote licensing server URL
+    LICENSE_SERVER_URL: str = "http://localhost:3000"
+
     # Artifact storage settings
     ARTIFACT_STORAGE_PATH: str = f"{SKYVERN_DIR}/artifacts"
     GENERATE_PRESIGNED_URLS: bool = False

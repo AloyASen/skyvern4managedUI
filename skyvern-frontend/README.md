@@ -35,6 +35,13 @@ npm start
 ```
 
 This will build the app and serve from port 8080.
+After launching, visit `http://localhost:8080` and click **Login** on the
+landing page. Supply a valid product license key, which is verified
+against the licensing server. On first use, the backend provisions an
+organization for the email tied to the key. All workflows, tasks,
+credentials and artifacts are scoped to the returned `organizationID`.
+The dashboard exposes a logout control in the top bar to clear the
+session when finished.
 
 ## Development
 

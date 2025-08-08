@@ -38,6 +38,8 @@ from skyvern.forge.sdk.db.models import (
     TaskV2Model,
     ThoughtModel,
     TOTPCodeModel,
+    UserClientModel,
+    UserModel,
     WorkflowModel,
     WorkflowParameterModel,
     WorkflowRunBlockModel,
@@ -825,6 +827,37 @@ class AgentDB:
 
         return convert_to_organization(org)
 
+    async def get_or_create_user_org(self, user_id: str) -> Organization:
+        async with self.Session() as session:
+            mapping = await session.get(UserClientModel, user_id)
+            if mapping:
+                organization = await session.get(OrganizationModel, mapping.organization_id)
+                if organization:
+                    return convert_to_organization(organization)
+
+            count = await session.scalar(select(func.count()).select_from(OrganizationModel))
+            org = OrganizationModel(organization_name=f"organization-{count + 1}")
+            session.add(org)
+            await session.commit()
+            await session.refresh(org)
+
+            mapping = UserClientModel(user_id=user_id, organization_id=org.organization_id)
+            session.add(mapping)
+            await session.commit()
+
+            return convert_to_organization(org)
+
+    async def create_user(self, username: str, password_hash: str) -> None:
+        """Create a new user record."""
+        async with self.Session() as session:
+            session.add(UserModel(username=username, password_hash=password_hash))
+            await session.commit()
+
+    async def get_user(self, username: str) -> UserModel | None:
+        """Retrieve a user by username."""
+        async with self.Session() as session:
+            return await session.get(UserModel, username)
+
     async def update_organization(
         self,
         organization_id: str,
@@ -1301,6 +1334,7 @@ class AgentDB:
         title: str,
         workflow_definition: dict[str, Any],
         organization_id: str | None = None,
+        user_id: str | None = None,
         description: str | None = None,
         proxy_location: ProxyLocation | None = None,
         webhook_callback_url: str | None = None,
@@ -1320,6 +1354,7 @@ class AgentDB:
         async with self.Session() as session:
             workflow = WorkflowModel(
                 organization_id=organization_id,
+                user_id=user_id,
                 title=title,
                 description=description,
                 workflow_definition=workflow_definition,
@@ -1575,6 +1610,7 @@ class AgentDB:
         workflow_permanent_id: str,
         workflow_id: str,
         organization_id: str,
+        user_id: str | None = None,
         browser_session_id: str | None = None,
         proxy_location: ProxyLocation | None = None,
         webhook_callback_url: str | None = None,
@@ -1590,6 +1626,7 @@ class AgentDB:
                     workflow_permanent_id=workflow_permanent_id,
                     workflow_id=workflow_id,
                     organization_id=organization_id,
+                    user_id=user_id,
                     browser_session_id=browser_session_id,
                     proxy_location=proxy_location,
                     status="created",

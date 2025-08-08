@@ -311,6 +311,7 @@ async def run_workflow(
     background_tasks: BackgroundTasks,
     workflow_run_request: WorkflowRunRequest,
     current_org: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
     template: bool = Query(False),
     x_api_key: Annotated[str | None, Header()] = None,
     x_max_steps_override: Annotated[int | None, Header()] = None,
@@ -346,6 +347,7 @@ async def run_workflow(
             request_id=request_id,
             request=request,
             background_tasks=background_tasks,
+            user_id=current_user_id,
         )
     except MissingBrowserAddressError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
@@ -447,6 +449,7 @@ async def cancel_run(
 async def create_workflow_legacy(
     request: Request,
     current_org: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
 ) -> Workflow:
     analytics.capture("skyvern-oss-agent-workflow-create-legacy")
     raw_yaml = await request.body()
@@ -458,7 +461,9 @@ async def create_workflow_legacy(
     try:
         workflow_create_request = WorkflowCreateYAMLRequest.model_validate(workflow_yaml)
         return await app.WORKFLOW_SERVICE.create_workflow_from_request(
-            organization=current_org, request=workflow_create_request
+            organization=current_org,
+            user_id=current_user_id,
+            request=workflow_create_request,
         )
     except WorkflowParameterMissingRequiredValue as e:
         raise e
@@ -497,6 +502,7 @@ async def create_workflow_legacy(
 async def create_workflow(
     data: WorkflowRequest,
     current_org: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
 ) -> Workflow:
     analytics.capture("skyvern-oss-agent-workflow-create")
     try:
@@ -512,6 +518,7 @@ async def create_workflow(
             )
         return await app.WORKFLOW_SERVICE.create_workflow_from_request(
             organization=current_org,
+            user_id=current_user_id,
             request=workflow_definition,
         )
     except yaml.YAMLError:
@@ -552,6 +559,7 @@ async def update_workflow_legacy(
         ..., description="The ID of the workflow to update. Workflow ID starts with `wpid_`.", examples=["wpid_123"]
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
 ) -> Workflow:
     analytics.capture("skyvern-oss-agent-workflow-update")
     # validate the workflow
@@ -565,6 +573,7 @@ async def update_workflow_legacy(
         workflow_create_request = WorkflowCreateYAMLRequest.model_validate(workflow_yaml)
         return await app.WORKFLOW_SERVICE.create_workflow_from_request(
             organization=current_org,
+            user_id=current_user_id,
             request=workflow_create_request,
             workflow_permanent_id=workflow_id,
         )
@@ -618,6 +627,7 @@ async def update_workflow(
         ..., description="The ID of the workflow to update. Workflow ID starts with `wpid_`.", examples=["wpid_123"]
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
+    current_user_id: str = Depends(org_auth_service.get_current_user_id),
 ) -> Workflow:
     analytics.capture("skyvern-oss-agent-workflow-update")
     try:
@@ -633,6 +643,7 @@ async def update_workflow(
             )
         return await app.WORKFLOW_SERVICE.create_workflow_from_request(
             organization=current_org,
+            user_id=current_user_id,
             request=workflow_definition,
             workflow_permanent_id=workflow_id,
         )
