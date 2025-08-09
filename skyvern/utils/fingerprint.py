@@ -8,7 +8,7 @@ from typing import List
 def get_mac() -> str:
     """Return the device MAC address."""
     mac = uuid.getnode()
-    return ":".join(f"{(mac >> ele) & 0xff:02x}" for ele in range(40, -1, -8))
+    return ":".join(f"{(mac >> ele) & 0xFF:02x}" for ele in range(40, -1, -8))
 
 
 def get_cpu_id() -> str:
@@ -19,17 +19,14 @@ def get_cpu_id() -> str:
             result = subprocess.check_output(["wmic", "cpu", "get", "ProcessorId"]).decode()
             return result.strip().split("\n")[1].strip()
         if system == "Linux":
-            result = subprocess.check_output(
-                "cat /proc/cpuinfo | grep Serial", shell=True
-            ).decode()
+            result = subprocess.check_output("cat /proc/cpuinfo | grep Serial", shell=True).decode()
             return result.strip().split(":")[1].strip()
         if system == "Darwin":
-            result = subprocess.check_output(
-                ["sysctl", "-n", "machdep.cpu.brand_string"]
-            ).decode()
+            result = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"]).decode()
             return result.strip()
     except Exception:
         return "unknown-cpu"
+    return "unknown-cpu"
 
 
 def get_disk_serial() -> str:
@@ -41,9 +38,7 @@ def get_disk_serial() -> str:
             lines = result.strip().split("\n")
             return lines[1].strip()
         if system == "Linux":
-            result = subprocess.check_output(
-                "hdparm -I /dev/sda | grep 'Serial Number'", shell=True
-            ).decode()
+            result = subprocess.check_output("hdparm -I /dev/sda | grep 'Serial Number'", shell=True).decode()
             return result.strip().split(":")[1].strip()
         if system == "Darwin":
             result = subprocess.check_output(
@@ -53,6 +48,7 @@ def get_disk_serial() -> str:
             return result.strip().split(":")[1].strip()
     except Exception:
         return "unknown-disk"
+    return "unknown-disk"
 
 
 def generate_fingerprint() -> str:

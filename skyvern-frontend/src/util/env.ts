@@ -19,6 +19,12 @@ if (!artifactApiBaseUrl) {
   console.warn("artifactApiBaseUrl environment variable was not set");
 }
 
+const licenseServerUrl = import.meta.env.VITE_LICENSE_SERVER_URL;
+
+if (!licenseServerUrl) {
+  console.warn("licenseServerUrl environment variable was not set");
+}
+
 const apiPathPrefix = import.meta.env.VITE_API_PATH_PREFIX ?? "";
 
 const lsKeys = {
@@ -43,6 +49,7 @@ export {
   environment,
   envCredential,
   artifactApiBaseUrl,
+  licenseServerUrl,
   apiPathPrefix,
   lsKeys,
   wssBaseUrl,
