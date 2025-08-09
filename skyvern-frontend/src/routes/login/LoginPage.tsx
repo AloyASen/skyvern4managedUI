@@ -1,7 +1,10 @@
+import axios from "axios";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getClient } from "@/api/AxiosClient";
 import { useAuthStore } from "@/store/AuthStore";
+import { licenseServerUrl } from "@/util/env";
+import { generateMachineId } from "@/util/machineFingerprint";
 
 function LoginPage() {
   const [licenseKey, setLicenseKey] = useState("");
@@ -10,6 +13,20 @@ function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const machineId = generateMachineId();
+    const payload = {
+      licenseKey,
+      machineId,
+      productId: 1,
+    };
+    const { data: licenseData } = await axios.post(
+      `${licenseServerUrl}/api/license/validate`,
+      payload,
+    );
+    if (String(licenseData.valid).toLowerCase() !== "true") {
+      alert("Invalid license");
+      return;
+    }
     const client = await getClient(null);
     const { data } = await client.post("/auth/login", {
       license_key: licenseKey,
