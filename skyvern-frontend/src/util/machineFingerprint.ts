@@ -22,11 +22,11 @@ function getCpuId(): string {
     const platform = os.platform();
     if (platform === "win32") {
       const result = execSync("wmic cpu get ProcessorId").toString();
-      return result.split("\n")[1].trim();
+      return result.split("\n")[1]?.trim() ?? "unknown-cpu";
     }
     if (platform === "linux") {
       const result = execSync("cat /proc/cpuinfo | grep Serial").toString();
-      return result.split(":")[1].trim();
+      return result.split(":")[1]?.trim() ?? "unknown-cpu";
     }
     if (platform === "darwin") {
       const result = execSync("sysctl -n machdep.cpu.brand_string").toString();
@@ -43,19 +43,19 @@ function getDiskSerial(): string {
     const platform = os.platform();
     if (platform === "win32") {
       const result = execSync("wmic diskdrive get SerialNumber").toString();
-      return result.split("\n")[1].trim();
+      return result.split("\n")[1]?.trim() ?? "unknown-disk";
     }
     if (platform === "linux") {
       const result = execSync(
         "hdparm -I /dev/sda | grep 'Serial Number'",
       ).toString();
-      return result.split(":")[1].trim();
+      return result.split(":")[1]?.trim() ?? "unknown-disk";
     }
     if (platform === "darwin") {
       const result = execSync(
         "system_profiler SPStorageDataType | grep 'Serial Number'",
       ).toString();
-      return result.split(":")[1].trim();
+      return result.split(":")[1]?.trim() ?? "unknown-disk";
     }
   } catch {
     /* empty */
