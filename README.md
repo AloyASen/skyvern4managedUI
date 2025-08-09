@@ -67,8 +67,8 @@ skyvern run all
 ```
 
 Go to http://localhost:8080 to access the landing page and click **Login**.
-Enter a product license key issued by your licensing server; the UI
-validates the key remotely and the backend provisions a user and
+Enter a product license key issued by your licensing server; the backend
+validates the key against your configured remote license server and provisions a user and
 organization on first use. All workflows, tasks, credentials and
 artifacts are tied to the returned `organizationID` (stored as
 `organization_id` in the database). The bootstrap credentials supplied
@@ -76,6 +76,10 @@ via `INITIAL_USER_USERNAME`/`INITIAL_USER_PASSWORD` are mapped to
 *organization-1*; each new license login receives *organization-2*,
 *organization-3*, and so on. A logout button in the dashboard clears the
 session when finished.
+
+> Note: The UI no longer calls the license server directly from the browser.
+> All license validation is proxied through the Skyvern backend to avoid
+> cross-origin/CORS issues and to keep credentials server-side.
 
 #### Code
 
@@ -217,6 +221,28 @@ task = await skyvern.run_task(
 
 ### Helpful commands to debug issues
 
+
+
+## Licensing and Remote Server Configuration
+
+- Backend setting: The Skyvern backend validates licenses by POSTing to
+  `LICENSE_SERVER_URL + "/api/license/validate"`. Configure this via the
+  environment variable `LICENSE_SERVER_URL` (see `docker-compose.yml`).
+  The product identifier sent in the request is controlled by
+  `PRODUCT_ID` (default `1`).
+
+- Container networking: If your license server runs on the host machine,
+  use `http://host.docker.internal:3000` on macOS/Windows for
+  `LICENSE_SERVER_URL` so the container can reach it. On Linux, set it to
+  the host’s IP or configure an appropriate DNS/bridge alias. Avoid
+  `http://localhost:3000` inside containers—`localhost` refers to the
+  container itself.
+
+- Frontend behavior: The UI does not contact the license server directly.
+  It calls `POST /auth/login` on the Skyvern backend which, in turn,
+  contacts the license server and issues a JWT upon success. This avoids
+  405/Method-Not-Allowed and CORS issues that can arise with browser
+  cross-origin requests.
 
 ```bash
 # Launch the Skyvern Server Separately*

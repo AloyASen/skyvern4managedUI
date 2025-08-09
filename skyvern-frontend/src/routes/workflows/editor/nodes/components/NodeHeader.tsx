@@ -173,7 +173,7 @@ function NodeHeader({
       workflowRunId === workflowRun?.workflow_run_id &&
       statusIsFinalized(workflowRun)
     ) {
-      navigate(`/workflows/${workflowPermanentId}/debug`);
+      navigate(`/dashboard/workflows/${workflowPermanentId}/debug`);
 
       if (statusIsAFailureType(workflowRun)) {
         toast({

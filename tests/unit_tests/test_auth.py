@@ -155,7 +155,186 @@ def test_license_login(monkeypatch) -> None:
     body = resp.json()
     assert "access_token" in body
     assert body["organizationID"] == "organization-1"
+    assert body.get("license_valid") is True
+    assert body.get("license_user", {}).get("email") == "alice@example.com"
 
     resp2 = client.post("/auth/login", json={"license_key": "abc"})
     assert resp2.status_code == 200
     assert resp2.json()["organizationID"] == body["organizationID"]
+
+
+def test_license_login_uses_remote_url(monkeypatch) -> None:
+    """Ensure backend posts to configured LICENSE_SERVER_URL and passes machineId."""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    async def setup():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    import asyncio
+
+    asyncio.get_event_loop().run_until_complete(setup())
+
+    db = AgentDB("sqlite+aiosqlite:///:memory:", db_engine=engine)
+    app_module.DATABASE = db
+
+    # Point settings to a non-default URL and assert it's used
+    from skyvern.config import settings
+
+    settings.LICENSE_SERVER_URL = "http://license.example.com:3000"
+
+    captured = {}
+
+    import httpx
+
+    def fake_post(url, json, timeout=10.0):  # type: ignore[no-redef]
+        captured["url"] = url
+        captured["json"] = json
+
+        class Resp:
+            def json(self):
+                return {
+                    "valid": "True",
+                    "user": {"email": "bob@example.com", "name": "Bob"},
+                }
+
+        return Resp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    fastapi_app = FastAPI()
+    fastapi_app.include_router(base_router)
+    client = TestClient(fastapi_app)
+    resp = client.post("/auth/login", json={"license_key": "xyz"})
+    assert resp.status_code == 200
+    assert captured["url"].startswith("http://license.example.com:3000/")
+    assert captured["json"]["licenseKey"] == "xyz"
+    assert "machineId" in captured["json"]
+    body = resp.json()
+    assert body.get("license_valid") is True
+    assert body.get("license_user") is not None
+
+
+def test_license_login_remote_405_maps_to_503(monkeypatch) -> None:
+    """If remote server returns non-JSON/405, backend returns 503."""
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    async def setup():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    import asyncio
+
+    asyncio.get_event_loop().run_until_complete(setup())
+
+    db = AgentDB("sqlite+aiosqlite:///:memory:", db_engine=engine)
+    app_module.DATABASE = db
+
+    import httpx
+
+    class FakeResponse:
+        def json(self):
+            raise ValueError("405 HTML body not JSON")
+
+    def fake_post(url, json, timeout=10.0):  # type: ignore[no-redef]
+        return FakeResponse()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    fastapi_app = FastAPI()
+    fastapi_app.include_router(base_router)
+    client = TestClient(fastapi_app)
+    resp = client.post("/auth/login", json={"license_key": "bad"})
+    assert resp.status_code == 503
+
+
+def test_license_login_forwards_machine_and_product(monkeypatch) -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    async def setup():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    import asyncio
+
+    asyncio.get_event_loop().run_until_complete(setup())
+
+    db = AgentDB("sqlite+aiosqlite:///:memory:", db_engine=engine)
+    app_module.DATABASE = db
+
+    captured = {}
+
+    import httpx
+
+    def fake_post(url, json, timeout=10.0):  # type: ignore[no-redef]
+        captured.update(json)
+
+        class Resp:
+            def json(self):
+                return {
+                    "valid": "True",
+                    "user": {"email": "carol@example.com", "name": "Carol"},
+                }
+
+        return Resp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    fastapi_app = FastAPI()
+    fastapi_app.include_router(base_router)
+    client = TestClient(fastapi_app)
+    resp = client.post(
+        "/auth/login",
+        json={"license_key": "lic123", "machine_id": "ui-machine-abc", "product_id": 1},
+    )
+    assert resp.status_code == 200
+    assert captured["licenseKey"] == "lic123"
+    assert captured["machineId"] == "ui-machine-abc"
+    assert captured["productId"] == 1
+
+
+def test_license_login_uses_settings_product_id_when_missing(monkeypatch) -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+
+    async def setup():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    import asyncio
+
+    asyncio.get_event_loop().run_until_complete(setup())
+
+    db = AgentDB("sqlite+aiosqlite:///:memory:", db_engine=engine)
+    app_module.DATABASE = db
+
+    from skyvern.config import settings
+
+    settings.PRODUCT_ID = 42
+
+    captured = {}
+
+    import httpx
+
+    def fake_post(url, json, timeout=10.0):  # type: ignore[no-redef]
+        captured.update(json)
+
+        class Resp:
+            def json(self):
+                return {
+                    "valid": "True",
+                    "user": {"email": "dave@example.com", "name": "Dave"},
+                }
+
+        return Resp()
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+
+    fastapi_app = FastAPI()
+    fastapi_app.include_router(base_router)
+    client = TestClient(fastapi_app)
+    resp = client.post(
+        "/auth/login",
+        json={"license_key": "lic456"},
+    )
+    assert resp.status_code == 200
+    assert captured["productId"] == 42

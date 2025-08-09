@@ -86,13 +86,13 @@ function Workflows() {
   ) {
     if (event.ctrlKey || event.metaKey) {
       window.open(
-        window.location.origin + `/workflows/${workflowPermanentId}/runs`,
+        window.location.origin + `/dashboard/workflows/${workflowPermanentId}/runs`,
         "_blank",
         "noopener,noreferrer",
       );
       return;
     }
-    navigate(`/workflows/${workflowPermanentId}/runs`);
+    navigate(`/dashboard/workflows/${workflowPermanentId}/runs`);
   }
 
   function handleIconClick(

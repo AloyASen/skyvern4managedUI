@@ -220,7 +220,7 @@ function PromptBox() {
         queryKey: ["runs"],
       });
       navigate(
-        `/workflows/${response.data.workflow_permanent_id}/${response.data.workflow_run_id}`,
+        `/dashboard/workflows/${response.data.workflow_permanent_id}/${response.data.workflow_run_id}`,
       );
     },
     onError: (error: AxiosError) => {

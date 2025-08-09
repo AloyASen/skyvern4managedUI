@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     INITIAL_USER_PASSWORD: str | None = None
     # Remote licensing server URL
     LICENSE_SERVER_URL: str = "http://localhost:3000"
+    # Product identifier for license validation
+    PRODUCT_ID: int = 1
 
     # Artifact storage settings
     ARTIFACT_STORAGE_PATH: str = f"{SKYVERN_DIR}/artifacts"

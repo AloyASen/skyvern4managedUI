@@ -92,7 +92,7 @@ function RunHistory() {
                       key={run.task_id}
                       className="cursor-pointer"
                       onClick={(event) => {
-                        handleNavigate(event, `/tasks/${run.task_id}/actions`);
+                        handleNavigate(event, `/dashboard/tasks/${run.task_id}/actions`);
                       }}
                     >
                       <TableCell className="max-w-0 truncate">
@@ -120,7 +120,7 @@ function RunHistory() {
                     onClick={(event) => {
                       handleNavigate(
                         event,
-                        `/workflows/${run.workflow_permanent_id}/${run.workflow_run_id}/overview`,
+                        `/dashboard/workflows/${run.workflow_permanent_id}/${run.workflow_run_id}/overview`,
                       );
                     }}
                   >

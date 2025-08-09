@@ -22,17 +22,17 @@ function SideNav() {
         links={[
           {
             label: "Discover",
-            to: "/discover",
+            to: "/dashboard/discover",
             icon: <CompassIcon className="size-6" />,
           },
           {
             label: "Workflows",
-            to: "/workflows",
+            to: "/dashboard/workflows",
             icon: <LightningBoltIcon className="size-6" />,
           },
           {
             label: "History",
-            to: "/history",
+            to: "/dashboard/history",
             icon: <CounterClockwiseClockIcon className="size-6" />,
           },
         ]}
@@ -42,7 +42,7 @@ function SideNav() {
         links={[
           {
             label: "Settings",
-            to: "/settings",
+            to: "/dashboard/settings",
             icon: <GearIcon className="size-6" />,
           },
         ]}

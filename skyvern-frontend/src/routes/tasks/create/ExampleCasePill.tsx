@@ -45,7 +45,7 @@ function ExampleCasePill({ exampleId, version, icon, label, prompt }: Props) {
       });
 
       navigate(
-        `/workflows/${response.data.workflow_permanent_id}/${response.data.workflow_run_id}`,
+        `/dashboard/workflows/${response.data.workflow_permanent_id}/${response.data.workflow_run_id}`,
       );
     },
     onError: (error: AxiosError) => {
@@ -64,7 +64,7 @@ function ExampleCasePill({ exampleId, version, icon, label, prompt }: Props) {
         if (version === "v2") {
           startObserverCruiseMutation.mutate(prompt);
         } else {
-          navigate(`/tasks/create/${exampleId}`);
+          navigate(`/dashboard/tasks/create/${exampleId}`);
         }
       }}
     >

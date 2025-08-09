@@ -844,6 +844,8 @@ class AgentDB:
             mapping = UserClientModel(user_id=user_id, organization_id=org.organization_id)
             session.add(mapping)
             await session.commit()
+            # Ensure all attributes are loaded after commit; avoid expired-attr lazy load
+            await session.refresh(org)
 
             return convert_to_organization(org)
 

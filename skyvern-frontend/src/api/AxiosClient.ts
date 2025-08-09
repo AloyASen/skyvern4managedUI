@@ -73,6 +73,13 @@ async function getClient(
   credentialGetter: CredentialGetter | null,
   version: ApiVersion = "v1",
 ) {
+  // Best-effort: ensure Authorization header is set from persisted token
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("authToken");
+    if (token && !client.defaults.headers.common["Authorization"]) {
+      setAuthorizationHeader(token);
+    }
+  }
   const get = () => {
     switch (version) {
       case "sans-api-v1":
