@@ -55,7 +55,24 @@ def scale_coordinates(
     current_dimension: Resolution,
     target_dimension: Resolution,
 ) -> tuple[int, int]:
+    """Scale a set of coordinates to a new resolution.
+
+    This helper adjusts ``current_coordinates`` so that they maintain the same
+    relative position when the containing image is resized from
+    ``current_dimension`` to ``target_dimension``. The calculation rounds to the
+    nearest integer instead of simply truncating the result which previously
+    caused noticeable drift when downscaling images.
+
+    Args:
+        current_coordinates: The ``(x, y)`` coordinates relative to the current
+            image size.
+        current_dimension: The width and height of the current image.
+        target_dimension: The desired width and height after resizing.
+
+    Returns:
+        tuple[int, int]: The coordinates scaled to ``target_dimension``.
+    """
     return (
-        int(current_coordinates[0] * target_dimension["width"] / current_dimension["width"]),
-        int(current_coordinates[1] * target_dimension["height"] / current_dimension["height"]),
+        round(current_coordinates[0] * target_dimension["width"] / current_dimension["width"]),
+        round(current_coordinates[1] * target_dimension["height"] / current_dimension["height"]),
     )
