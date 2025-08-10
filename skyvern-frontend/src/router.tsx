@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter, useLocation } from "react-router-dom";
 import { BrowserSession } from "@/routes/browserSession/BrowserSession";
 import { PageLayout } from "./components/PageLayout";
 import { DiscoverPage } from "./routes/discover/DiscoverPage";
@@ -43,10 +43,58 @@ const ProtectedRoot = () => {
   );
 };
 
+const LegacyRedirect = ({ base }: { base: string }) => {
+  const location = useLocation();
+  const suffix = location.pathname.slice(base.length);
+  const search = location.search || "";
+  return <Navigate to={`/dashboard${base}${suffix}${search}`} replace />;
+};
+
 const router = createBrowserRouter([
   {
     path: "/",
     element: <LandingPage />,
+  },
+  // Redirect legacy top-level routes to /dashboard/* equivalents
+  {
+    path: "/discover",
+    element: <Navigate to="/dashboard/discover" />,
+  },
+  {
+    path: "/discover/*",
+    element: <LegacyRedirect base="/discover" />,
+  },
+  {
+    path: "/workflows",
+    element: <Navigate to="/dashboard/workflows" />,
+  },
+  {
+    path: "/workflows/*",
+    element: <LegacyRedirect base="/workflows" />,
+  },
+  {
+    path: "/history",
+    element: <Navigate to="/dashboard/history" />,
+  },
+  {
+    path: "/history/*",
+    element: <LegacyRedirect base="/history" />,
+  },
+  {
+    path: "/settings",
+    element: <Navigate to="/dashboard/settings" />,
+  },
+  {
+    path: "/settings/*",
+    element: <LegacyRedirect base="/settings" />,
+  },
+  {
+    path: "/tasks",
+    element: <Navigate to="/dashboard/tasks" />,
+  },
+  {
+    path: "/tasks/*",
+    element: <LegacyRedirect base="/tasks" />,
   },
   {
     path: "/login",

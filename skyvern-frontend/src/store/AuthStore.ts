@@ -2,6 +2,8 @@ import { create } from "zustand";
 import {
   setAuthorizationHeader,
   removeAuthorizationHeader,
+  setOrganizationIdHeader,
+  removeOrganizationIdHeader,
 } from "@/api/AxiosClient";
 
 type AuthState = {
@@ -19,6 +21,9 @@ const initialOrg =
 if (initialToken) {
   setAuthorizationHeader(initialToken);
 }
+if (initialOrg) {
+  setOrganizationIdHeader(initialOrg);
+}
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   token: initialToken,
@@ -33,8 +38,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     if (organizationID) {
       localStorage.setItem("organizationID", organizationID);
+      setOrganizationIdHeader(organizationID);
     } else {
       localStorage.removeItem("organizationID");
+      removeOrganizationIdHeader();
     }
     set({ token, organizationID });
   },

@@ -46,6 +46,7 @@ services:
       - INITIAL_USER_PASSWORD=admin
       - LICENSE_SERVER_URL=http://host.docker.internal:3000 # If your license server runs on the host, prefer http://host.docker.internal:3000 (macOS/Windows) or host IP (Linux)
       - PRODUCT_ID=2 # Product identifier sent to the license server by the backend
+      # - VITE_SYSTEM_FINGERPRINT=<your_system_fingerprint> # This is used to identify your system for the license server
       # - BROWSER_TYPE=cdp-connect
       # Use this command to start Chrome with remote debugging:
       # "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\chrome-cdp-profile" --no-first-run --no-default-browser-check

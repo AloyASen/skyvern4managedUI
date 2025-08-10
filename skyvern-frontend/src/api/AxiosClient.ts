@@ -37,10 +37,14 @@ const artifactApiClient = axios.create({
   baseURL: artifactApiBaseUrl,
 });
 
+const ORG_HEADER = "X-Organization-ID";
+
 export function setAuthorizationHeader(token: string) {
   client.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   v2Client.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   clientSansApiV1.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  // Prefer Authorization over API key
+  removeApiKeyHeader();
 }
 
 export function removeAuthorizationHeader() {
@@ -48,6 +52,33 @@ export function removeAuthorizationHeader() {
     delete client.defaults.headers.common["Authorization"];
     delete v2Client.defaults.headers.common["Authorization"];
     delete clientSansApiV1.defaults.headers.common["Authorization"];
+  }
+  // Restore env API key if configured
+  if (envCredential) {
+    setApiKeyHeader(envCredential);
+  }
+}
+
+export function setOrganizationIdHeader(organizationId: string) {
+  client.defaults.headers.common[ORG_HEADER] = organizationId;
+  v2Client.defaults.headers.common[ORG_HEADER] = organizationId;
+  clientSansApiV1.defaults.headers.common[ORG_HEADER] = organizationId;
+  artifactApiClient.defaults.headers.common[ORG_HEADER] = organizationId;
+}
+
+export function removeOrganizationIdHeader() {
+  // Remove org header from all clients if present
+  if (client.defaults.headers.common[ORG_HEADER]) {
+    delete client.defaults.headers.common[ORG_HEADER];
+  }
+  if (v2Client.defaults.headers.common[ORG_HEADER]) {
+    delete v2Client.defaults.headers.common[ORG_HEADER];
+  }
+  if (clientSansApiV1.defaults.headers.common[ORG_HEADER]) {
+    delete clientSansApiV1.defaults.headers.common[ORG_HEADER];
+  }
+  if (artifactApiClient.defaults.headers.common[ORG_HEADER]) {
+    delete artifactApiClient.defaults.headers.common[ORG_HEADER];
   }
 }
 
@@ -78,6 +109,28 @@ async function getClient(
     const token = localStorage.getItem("authToken");
     if (token && !client.defaults.headers.common["Authorization"]) {
       setAuthorizationHeader(token);
+    }
+    // Prefer Authorization when token exists; otherwise use env API key if available
+    if (token) {
+      removeApiKeyHeader();
+    } else if (envCredential) {
+      setApiKeyHeader(envCredential);
+    }
+    const organizationId = (() => {
+      try {
+        return (
+          (typeof sessionStorage !== "undefined" &&
+            sessionStorage.getItem("organizationID")) ||
+          localStorage.getItem("organizationID")
+        );
+      } catch {
+        return localStorage.getItem("organizationID");
+      }
+    })();
+    if (organizationId) {
+      setOrganizationIdHeader(organizationId);
+    } else {
+      removeOrganizationIdHeader();
     }
   }
   const get = () => {
