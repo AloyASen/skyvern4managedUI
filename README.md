@@ -464,7 +464,7 @@ More extensive documentation can be found on our [📕 docs page](https://docs.s
 | `OPENAI_API_BASE` | OpenAI API Base, optional | String | `https://openai.api.base` |
 | `OPENAI_ORGANIZATION` | OpenAI Organization ID, optional | String | `your-org-id` |
 
-Recommended `LLM_KEY`: `OPENAI_GPT4O`, `OPENAI_GPT4O_MINI`, `OPENAI_GPT4_1`, `OPENAI_O4_MINI`, `OPENAI_O3`
+Recommended `LLM_KEY`: `OPENAI_GPT4O`, `OPENAI_GPT4O_MINI`, `OPENAI_GPT4_1`, `OPENAI_O4_MINI`, `OPENAI_O3`  [ `OPENAI_GPT5_MINI` `OPENAI_GPT5` ]
 
 ##### Anthropic
 | Variable | Description| Type | Sample Value|

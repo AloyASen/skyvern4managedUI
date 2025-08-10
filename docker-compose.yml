@@ -69,7 +69,7 @@ services:
     # If you want to use other LLM provider, like azure and anthropic:
     # - ENABLE_ANTHROPIC=true
     # - LLM_KEY=ANTHROPIC_CLAUDE3.5_SONNET
-    # - ANTHROPIC_API_KEY=<your_anthropic_key>
+    # - ANTHROPIC_API_KEY=YOUR_ANTHROPIC_API_KEY
     # Microsoft Azure OpenAI support:
     # If you'd like to use Microsoft Azure OpenAI as your managed LLM service integration with Skyvern, use the environment variables below.
     # In your Microsoft Azure subscription, you will need to provision the OpenAI service and deploy a model, in order to utilize it.

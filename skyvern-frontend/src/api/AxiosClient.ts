@@ -1,5 +1,5 @@
 import { apiBaseUrl, artifactApiBaseUrl, envCredential } from "@/util/env";
-import axios from "axios";
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
 
 type ApiVersion = "sans-api-v1" | "v1" | "v2";
 
@@ -9,28 +9,37 @@ const url = new URL(apiBaseUrl);
 const pathname = url.pathname.replace("/api", "");
 const apiSansApiV1BaseUrl = `${url.origin}${pathname}`;
 
+const v1BaseHeaders: Record<string, string> = {
+  "Content-Type": "application/json",
+};
+if (envCredential) {
+  v1BaseHeaders["x-api-key"] = envCredential;
+}
 const client = axios.create({
   baseURL: apiV1BaseUrl,
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": envCredential,
-  },
+  headers: v1BaseHeaders,
 });
 
+const v2BaseHeaders: Record<string, string> = {
+  "Content-Type": "application/json",
+};
+if (envCredential) {
+  v2BaseHeaders["x-api-key"] = envCredential;
+}
 const v2Client = axios.create({
   baseURL: apiV2BaseUrl,
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": envCredential,
-  },
+  headers: v2BaseHeaders,
 });
 
+const sansApiBaseHeaders: Record<string, string> = {
+  "Content-Type": "application/json",
+};
+if (envCredential) {
+  sansApiBaseHeaders["x-api-key"] = envCredential;
+}
 const clientSansApiV1 = axios.create({
   baseURL: apiSansApiV1BaseUrl,
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": envCredential,
-  },
+  headers: sansApiBaseHeaders,
 });
 
 const artifactApiClient = axios.create({
@@ -83,21 +92,15 @@ export function removeOrganizationIdHeader() {
 }
 
 export function setApiKeyHeader(apiKey: string) {
-  client.defaults.headers.common["X-API-Key"] = apiKey;
-  v2Client.defaults.headers.common["X-API-Key"] = apiKey;
-  clientSansApiV1.defaults.headers.common["X-API-Key"] = apiKey;
+  client.defaults.headers.common["x-api-key"] = apiKey;
+  v2Client.defaults.headers.common["x-api-key"] = apiKey;
+  clientSansApiV1.defaults.headers.common["x-api-key"] = apiKey;
 }
 
 export function removeApiKeyHeader() {
-  if (client.defaults.headers.common["X-API-Key"]) {
-    delete client.defaults.headers.common["X-API-Key"];
-  }
-  if (v2Client.defaults.headers.common["X-API-Key"]) {
-    delete v2Client.defaults.headers.common["X-API-Key"];
-  }
-  if (clientSansApiV1.defaults.headers.common["X-API-Key"]) {
-    delete clientSansApiV1.defaults.headers.common["X-API-Key"];
-  }
+  delete client.defaults.headers.common["x-api-key"];
+  delete v2Client.defaults.headers.common["x-api-key"];
+  delete clientSansApiV1.defaults.headers.common["x-api-key"];
 }
 
 async function getClient(
@@ -166,3 +169,37 @@ async function getClient(
 export type CredentialGetter = () => Promise<string | null>;
 
 export { getClient, artifactApiClient };
+
+// Ensure per-request headers reflect the current session state
+function attachInterceptors(instance: AxiosInstance) {
+  instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const orgId =
+        (typeof sessionStorage !== "undefined" &&
+          sessionStorage.getItem("organizationID")) ||
+        localStorage.getItem("organizationID");
+
+      // Prefer bearer token over API key
+      if (token) {
+        (config.headers as any)["Authorization"] = `Bearer ${token}`;
+        delete (config.headers as any)["x-api-key"];
+        delete (config.headers as any)["X-API-Key"];
+      } else if (envCredential) {
+        (config.headers as any)["x-api-key"] = envCredential;
+      }
+
+      if (orgId) {
+        (config.headers as any)[ORG_HEADER] = orgId;
+      }
+    } catch (e) {
+      // ignore storage issues
+    }
+    return config;
+  });
+}
+
+attachInterceptors(client);
+attachInterceptors(v2Client);
+attachInterceptors(clientSansApiV1);
+attachInterceptors(artifactApiClient as any);

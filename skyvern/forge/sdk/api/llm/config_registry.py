@@ -135,6 +135,28 @@ if settings.ENABLE_OPENAI:
             "gpt-4o", ["OPENAI_API_KEY"], supports_vision=True, add_assistant_prefix=False, max_completion_tokens=16384
         ),
     )
+    # LLMConfigRegistry.register_config(
+    #     "OPENAI_GPT5",
+    #     LLMConfig(
+    #         "gpt-5",
+    #         ["OPENAI_API_KEY"],
+    #         supports_vision=True,
+    #         add_assistant_prefix=False,
+    #         max_completion_tokens=16384,
+    #         temperature=None,  # GPT-5 does not support explicit temperature values; use provider default
+    #     ),
+    # )
+    # LLMConfigRegistry.register_config(
+    #     "OPENAI_GPT5_MINI",
+    #     LLMConfig(
+    #         "gpt-5-mini",
+    #         ["OPENAI_API_KEY"],
+    #         supports_vision=True,
+    #         add_assistant_prefix=False,
+    #         max_completion_tokens=16384,
+    #         temperature=None,  # GPT-5 does not support explicit temperature values; use provider default
+    #     ),
+    # )
     LLMConfigRegistry.register_config(
         "OPENAI_O3_MINI",
         LLMConfig(

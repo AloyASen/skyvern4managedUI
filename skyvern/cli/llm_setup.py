@@ -71,6 +71,8 @@ def setup_llm_providers() -> None:
             update_or_add_env_var("ENABLE_OPENAI", "true")
             model_options.extend(
                 [
+                    # "OPENAI_GPT5",
+                    # "OPENAI_GPT5_MINI",
                     "OPENAI_GPT4_1",
                     "OPENAI_GPT4_1_MINI",
                     "OPENAI_GPT4_1_NANO",
