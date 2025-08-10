@@ -1,122 +1,265 @@
-from datetime import datetime, timedelta
-from typing import Any
-import logging
-from hashlib import sha256
+import hashlib
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import HTTPException, status
-from jose import jwt
-from pydantic import BaseModel, ConfigDict, Field
+import structlog
+from fastapi import Body, Header, HTTPException
+from fastapi import status as http_status
 
-from skyvern.config import settings
-from skyvern.forge import app
-from skyvern.forge.sdk.routes.routers import base_router, legacy_base_router
-from skyvern.utils.fingerprint import SYSTEM_FINGERPRINT
+from .routers import legacy_base_router as router
 
 
-logger = logging.getLogger(__name__)
+PERSIST_DIR = Path(os.environ.get("PERSIST_DIR", "/app/.streamlit"))
+PERSIST_FILE = PERSIST_DIR / "organizations.json"
+LOG = structlog.get_logger()
 
 
-class LicenseLoginRequest(BaseModel):
-    """Request body containing a license key and optional client identifiers."""
-
-    license_key: str
-    machine_id: str | None = None
-    product_id: int | None = None
-
-
-class TokenResponse(BaseModel):
-    """Response containing a JWT, organization mapping, and license metadata."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    access_token: str
-    organization_id: str = Field(alias="organizationID")
-    token_type: str = "bearer"
-    license_valid: bool | None = None
-    license_user: dict[str, Any] | None = None
-    license_payload: dict[str, Any] | None = None
+def _load_store() -> Dict[str, Any]:
+    try:
+        if PERSIST_FILE.exists():
+            return json.loads(PERSIST_FILE.read_text())
+    except Exception:
+        pass
+    return {"orgs": {}, "license_to_org": {}}
 
 
-@base_router.post("/auth/login", response_model=TokenResponse)
-@legacy_base_router.post("/auth/login", response_model=TokenResponse)
-async def login(data: LicenseLoginRequest) -> TokenResponse:
-    """Validate a license key and issue an access token."""
-    username: str
-    
-    # Mask license key for safer logs (show first/last 2 chars)
-    def _mask(s: str) -> str:
-        return s if len(s) <= 4 else f"{s[:2]}***{s[-2:]}"
+def _save_store(data: Dict[str, Any]) -> None:
+    try:
+        PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+        PERSIST_FILE.write_text(json.dumps(data, indent=2))
+    except Exception as e:
+        # Best-effort persistence; do not crash auth
+        LOG.warning("auth_persist_failed", error=str(e))
 
-    logger.info(
-        "[auth.login] inbound: machine_id=%s product_id=%s license_key=%s",
-        data.machine_id,
-        data.product_id,
-        _mask(data.license_key),
+
+def _org_id_from_license(license_key: str) -> str:
+    h = hashlib.sha256(license_key.encode()).hexdigest()[:16]
+    return f"org-{h}"
+
+
+async def _fetch_license_profile(
+    license_key: str, machine_id: str, product_id: Optional[str] | Optional[int] = None
+) -> Optional[Dict[str, Any]]:
+    base = os.environ.get("LICENSE_SERVER_URL") or os.environ.get("VITE_LICENSE_SERVER_URL")
+    if not base:
+        return None
+    # Use configured path if provided; otherwise try a few common paths
+    configured_path = os.environ.get("LICENSE_LOGIN_PATH")
+    raw_paths = [
+        configured_path,
+        "/api/license/validate",
+        "/api/v1/auth/login",
+        "/api/v1/license/login",
+        "/api/license/login",
+        "/login",
+    ]
+    # Filter out None/empty and normalize to leading '/'
+    paths = []
+    for p in raw_paths:
+        if not p:
+            continue
+        p = str(p).strip()
+        if not p:
+            continue
+        if not p.startswith("/"):
+            p = "/" + p
+        paths.append(p)
+    LOG.info(
+        "license_paths_prepared",
+        base=base,
+        configured_path=configured_path,
+        paths=paths,
     )
-    print(
-        "[auth.login] inbound:",
-        {"machine_id": data.machine_id, "product_id": data.product_id, "license_key": _mask(data.license_key)},
-        flush=True,
+    # Build payload EXACTLY as required by license server
+    # {
+    #   "licenseKey": "...",
+    #   "machineId": "...",
+    #   "productId": 2
+    # }
+    pid: Any = product_id
+    try:
+        if isinstance(pid, str) and pid.isdigit():
+            pid = int(pid)
+    except Exception:
+        pass
+    payload: Dict[str, Any] = {"licenseKey": license_key, "machineId": machine_id}
+    if pid is not None:
+        payload["productId"] = pid
+    async with httpx.AsyncClient(timeout=10) as client:
+        for p in paths:
+            url = base.rstrip("/") + p
+            try:
+                # Log where we're calling (mask license)
+                def _mask(val: Any) -> Any:
+                    try:
+                        s = str(val)
+                        if len(s) <= 8:
+                            return "***"
+                        return f"{s[:4]}***{s[-4:]}"
+                    except Exception:
+                        return "***"
+
+                masked_payload = {
+                    "licenseKey": _mask(payload.get("licenseKey")),
+                    "machineId": _mask(payload.get("machineId")),
+                    "productId": payload.get("productId"),
+                }
+                LOG.info("license_call_attempt", url=url, payload=masked_payload)
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    LOG.info(
+                        "license_call_success",
+                        url=url,
+                        status=resp.status_code,
+                        has_user=isinstance(data, dict) and bool(data.get("user")),
+                        valid=data.get("valid") if isinstance(data, dict) else None,
+                        days_left=data.get("days_left") if isinstance(data, dict) else None,
+                    )
+                    return data
+                else:
+                    body_preview = None
+                    try:
+                        body_preview = resp.text[:300]
+                    except Exception:
+                        body_preview = None
+                    LOG.warning(
+                        "license_call_non_200",
+                        url=url,
+                        status=resp.status_code,
+                        body_preview=body_preview,
+                    )
+            except Exception:
+                LOG.exception("license_call_exception", url=url)
+                continue
+    return None
+
+
+@router.post("/auth/login")
+async def login(
+    body: Dict[str, Any] = Body(...),
+):
+    license_key = body.get("license_key")
+    machine_id = body.get("machine_id")
+    if not license_key or not machine_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="license_key and machine_id are required",
+        )
+
+    LOG.info(
+        "login_request_received",
+        licenseKey="***",  # never log raw key
+        machineId=(str(machine_id)[:6] + "***") if machine_id else None,
+    )
+    store = _load_store()
+    org_id = store.get("license_to_org", {}).get(license_key) or _org_id_from_license(license_key)
+
+    # Always call license server on login: must succeed and must be valid
+    product_id = os.environ.get("PRODUCT_ID")
+    if not product_id:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="PRODUCT_ID is not configured on the server",
+        )
+    try:
+        profile = await _fetch_license_profile(license_key, machine_id, product_id)
+    except Exception:
+        LOG.exception("license_server_unavailable")
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="License server is unavailable",
+        )
+
+    if profile is None:
+        # No valid response available from license server
+        LOG.error("license_server_no_response")
+        raise HTTPException(
+            status_code=http_status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="License server is unavailable",
+        )
+
+    # Validate license status. Accept boolean or string forms.
+    valid_field = profile.get("valid") if isinstance(profile, dict) else None
+    is_valid = False
+    if isinstance(valid_field, bool):
+        is_valid = valid_field
+    elif isinstance(valid_field, str):
+        is_valid = valid_field.strip().lower() in {"true", "1", "yes", "y"}
+
+    if not is_valid:
+        LOG.warning("license_invalid", valid_field=str(valid_field))
+        raise HTTPException(
+            status_code=http_status.HTTP_401_UNAUTHORIZED,
+            detail="License is invalid",
+        )
+
+    # Persist mapping and the (valid) profile for future reference
+    store.setdefault("orgs", {})[org_id] = {
+        "license_key": license_key,
+        "machine_id": machine_id,
+        "profile": profile,
+    }
+    store.setdefault("license_to_org", {})[license_key] = org_id
+    _save_store(store)
+    LOG.info(
+        "license_profile_persisted",
+        organizationID=org_id,
+        has_user=isinstance(profile, dict) and bool(profile.get("user")),
+        fields=list(profile.keys()) if isinstance(profile, dict) else None,
     )
 
-    license_valid: bool | None = None
-    license_user: dict[str, Any] | None = None
-    license_payload: dict[str, Any] | None = None
+    # Return a simple access token and org ID
+    # Token can be any opaque string; UI uses it for subsequent calls
+    access_token = hashlib.sha256(f"{license_key}:{machine_id}".encode()).hexdigest()
 
-    if (
-        settings.INITIAL_USER_USERNAME
-        and settings.INITIAL_USER_PASSWORD
-        and data.license_key == settings.INITIAL_USER_PASSWORD
-    ):
-        username = settings.INITIAL_USER_USERNAME
-        user = await app.DATABASE.get_user(username)
-        if not user:
-            hashed = sha256(data.license_key.encode()).hexdigest()
-            await app.DATABASE.create_user(username, hashed)
-        license_valid = True
-        license_user = {"email": username}
-    else:
-        try:
-            url = f"{settings.LICENSE_SERVER_URL}/api/license/validate"
-            outbound_payload = {
-                "licenseKey": data.license_key,
-                "machineId": data.machine_id or SYSTEM_FINGERPRINT,
-                "productId": (
-                    data.product_id if data.product_id is not None else settings.PRODUCT_ID
-                ),
-            }
-            safe_payload = {**outbound_payload, "licenseKey": _mask(outbound_payload["licenseKey"])}
-            logger.info("[auth.login] outbound -> %s payload=%s", url, safe_payload)
-            print("[auth.login] outbound ->", url, safe_payload, flush=True)
-            response = httpx.post(url, json=outbound_payload, timeout=10.0)
-            logger.info("[auth.login] license server response: status=%s", response.status_code)
-            print("[auth.login] license server response status:", response.status_code, flush=True)
-            payload = response.json()
-            logger.info("[auth.login] license server payload keys: %s", list(payload.keys()))
-            print("[auth.login] license server payload keys:", list(payload.keys()), flush=True)
-            license_payload = payload
-        except Exception as exc:  # pragma: no cover - network error
-            logger.exception("[auth.login] outbound/license error: %s", exc)
-            print("[auth.login] outbound/license error:", str(exc), flush=True)
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
-        if str(payload.get("valid")).lower() != "true":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid license")
-        username = payload["user"]["email"]
-        hashed = sha256(data.license_key.encode()).hexdigest()
-        if not await app.DATABASE.get_user(username):
-            await app.DATABASE.create_user(username, hashed)
-        license_valid = True
-        license_user = payload.get("user")
-    org = await app.DATABASE.get_or_create_user_org(username)
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    token = jwt.encode(
-        {"sub": username, "exp": expire}, settings.SECRET_KEY, algorithm=settings.SIGNATURE_ALGORITHM
-    )
-    return TokenResponse(
-        access_token=token,
-        organization_id=org.organization_id,
-        license_valid=license_valid,
-        license_user=license_user,
-        license_payload=license_payload,
-    )
+    # Respond with any known profile details so UI can show immediately
+    response: Dict[str, Any] = {
+        "access_token": access_token,
+        "organizationID": org_id,
+    }
+    if isinstance(profile, dict):
+        # Pass-through selected fields commonly used by the UI
+        for key in ("user", "licenseType", "market", "plan", "valid", "days_left"):
+            if key in profile:
+                response[key] = profile[key]
+    return response
+
+
+@router.get("/auth/profile")
+async def get_profile(
+    organization_id: Optional[str] = Header(None, alias="X-Organization-ID"),
+):
+    if not organization_id:
+        raise HTTPException(status_code=400, detail="X-Organization-ID header is required")
+    store = _load_store()
+    org = store.get("orgs", {}).get(organization_id)
+    if not org:
+        return {
+            "name": None,
+            "email": None,
+            "licenseType": None,
+            "market": None,
+            "plan": None,
+        }
+    profile = org.get("profile")
+    # Normalize a few known shapes
+    if isinstance(profile, dict):
+        user = profile.get("user") or {}
+        return {
+            "name": user.get("name") or profile.get("name"),
+            "email": user.get("email") or profile.get("email"),
+            "licenseType": profile.get("licenseType") or profile.get("license_type"),
+            "market": profile.get("market"),
+            "plan": profile.get("plan") or (profile.get("license") or {}).get("plan"),
+        }
+    return {
+        "name": None,
+        "email": None,
+        "licenseType": None,
+        "market": None,
+        "plan": None,
+    }

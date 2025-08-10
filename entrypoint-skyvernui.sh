@@ -8,20 +8,31 @@ if [[ -z "${VITE_SKYVERN_API_KEY:-}" ]] && [[ -f "/app/.streamlit/secrets.toml" 
   export VITE_SKYVERN_API_KEY
 fi
 
-# Compute system fingerprint for license validation (best-effort)
+# Compute a stable, hardware-based system fingerprint for license validation.
+# Persist it under the shared .streamlit volume so it remains stable across container restarts.
 if [[ -z "${VITE_SYSTEM_FINGERPRINT:-}" ]]; then
-  if command -v python3 >/dev/null 2>&1; then
-    VITE_SYSTEM_FINGERPRINT=$(python3 - <<'PY'
-from skyvern.utils.fingerprint import SYSTEM_FINGERPRINT
-print(SYSTEM_FINGERPRINT)
-PY
-)
+  persist_dir="/app/.streamlit"
+  persist_file="${persist_dir}/system_fingerprint"
+  if [[ -r "$persist_file" ]]; then
+    VITE_SYSTEM_FINGERPRINT=$(tr -d '\n' < "$persist_file")
   else
-    if [[ -f /etc/machine-id ]]; then
-      VITE_SYSTEM_FINGERPRINT=$(cat /etc/machine-id)
+    # Preference order (Linux): hardware UUID -> machine-id -> hostname
+    candidate=""
+    if [[ -r "/sys/class/dmi/id/product_uuid" ]]; then
+      candidate=$(tr -d '\n' < /sys/class/dmi/id/product_uuid)
+    elif [[ -r "/etc/machine-id" ]]; then
+      candidate=$(tr -d '\n' < /etc/machine-id)
     else
-      VITE_SYSTEM_FINGERPRINT=$(hostname)
+      candidate=$(hostname)
     fi
+    # Normalize and hash to avoid exposing raw identifiers while keeping stability
+    if command -v sha256sum >/dev/null 2>&1; then
+      VITE_SYSTEM_FINGERPRINT=$(printf "%s" "$candidate" | sha256sum | awk '{print $1}')
+    else
+      VITE_SYSTEM_FINGERPRINT="$candidate"
+    fi
+    mkdir -p "$persist_dir"
+    printf "%s\n" "$VITE_SYSTEM_FINGERPRINT" > "$persist_file"
   fi
   export VITE_SYSTEM_FINGERPRINT
 fi

@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getClient } from "@/api/AxiosClient";
 import { useAuthStore } from "@/store/AuthStore";
+import { useProfileStore, type LicenseProfile } from "@/store/ProfileStore";
 import { generateMachineId } from "@/util/machineFingerprint";
+import { extractProfileFromResponse } from "@/util/profile";
 
 function LoginPage() {
   const [licenseKey, setLicenseKey] = useState("");
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setProfile = useProfileStore((s) => s.setProfile);
   const navigate = useNavigate();
 
   const [submitting, setSubmitting] = useState(false);
@@ -23,6 +26,22 @@ function LoginPage() {
         machine_id: generateMachineId(),
       });
       setAuth(data.access_token, data.organizationID);
+
+      // Best-effort: capture license/user profile if present in response
+      // Prefer backend-stored profile over payload; fetch it now
+      try {
+        const authedClient = await getClient(null);
+        const { data: prof } = await authedClient.get("/auth/profile");
+        const extracted = extractProfileFromResponse(prof) ?? extractProfileFromResponse(data);
+        if (extracted) {
+          setProfile(extracted as LicenseProfile);
+        }
+      } catch {
+        const extracted = extractProfileFromResponse(data);
+        if (extracted) {
+          setProfile(extracted as LicenseProfile);
+        }
+      }
       navigate("/dashboard");
     } catch (err: any) {
       const msg = err?.response?.data?.detail ?? err?.message ?? "Login failed";
