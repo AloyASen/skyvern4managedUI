@@ -1,4 +1,6 @@
-import { Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { LoginForm } from "@/routes/login/LoginForm";
+import { RegisterForm } from "@/routes/register/RegisterForm";
 
 function GradientGrid() {
   return (
@@ -69,6 +71,80 @@ function IconPuzzle() {
 }
 
 const LandingPage = () => {
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const modalShown = showLogin || showRegister;
+  const [modalMounted, setModalMounted] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+
+  // Handle enter/exit animations
+  useEffect(() => {
+    if (modalShown) {
+      setModalMounted(true);
+      // allow next paint to apply transition
+      requestAnimationFrame(() => setModalOpen(true));
+    } else if (modalMounted) {
+      setModalOpen(false);
+      const t = setTimeout(() => setModalMounted(false), 220);
+      return () => clearTimeout(t);
+    }
+  }, [modalShown]);
+
+  // Focus management + focus trap + Esc to close
+  useEffect(() => {
+    if (!modalMounted) return;
+    const node = panelRef.current;
+    if (!node) return;
+
+    // Focus the first focusable element
+    const focusableSelector = [
+      'button',
+      '[href]',
+      'input',
+      'select',
+      'textarea',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+    const focusables = Array.from(node.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (el) => !el.hasAttribute('disabled') && !el.getAttribute('aria-hidden')
+    );
+    if (focusables.length) {
+      focusables[0]?.focus();
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!panelRef.current) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowLogin(false);
+        setShowRegister(false);
+        return;
+      }
+      if (e.key === 'Tab') {
+        const els = Array.from(panelRef.current.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+          (el) => !el.hasAttribute('disabled') && !el.getAttribute('aria-hidden')
+        );
+        if (els.length === 0) return;
+        const first = els[0];
+        const last = els[els.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey) {
+          if (active === first || !panelRef.current.contains(active)) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [modalMounted]);
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       <GradientGrid />
@@ -89,16 +165,25 @@ const LandingPage = () => {
           <a href="#about" className="hover:text-white">
             About
           </a>
-          <Link
-            to="/login"
+          <button
+            onClick={() => {
+              setShowRegister(false);
+              setShowLogin(true);
+            }}
             className="rounded-md bg-cyan-500 px-4 py-2 font-medium text-slate-900 hover:bg-cyan-400"
           >
             Login
-          </Link>
+          </button>
         </nav>
-        <Link to="/login" className="md:hidden text-cyan-300">
+        <button
+          onClick={() => {
+            setShowRegister(false);
+            setShowLogin(true);
+          }}
+          className="md:hidden text-cyan-300"
+        >
           Login
-        </Link>
+        </button>
       </header>
 
       {/* Hero */}
@@ -113,18 +198,30 @@ const LandingPage = () => {
               website. Private by default, fast by design.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <Link
-                to="/login"
+              <button
+                onClick={() => {
+                  setShowRegister(false);
+                  setShowLogin(true);
+                }}
                 className="rounded-md bg-white px-5 py-3 font-medium text-slate-900 hover:bg-slate-100"
               >
                 Get started
-              </Link>
+              </button>
               <a
                 href="#features"
                 className="rounded-md border border-slate-700 px-5 py-3 text-slate-300 hover:border-slate-600 hover:text-white"
               >
                 Explore features
               </a>
+              <button
+                onClick={() => {
+                  setShowLogin(false);
+                  setShowRegister(true);
+                }}
+                className="rounded-md border border-slate-700 px-5 py-3 text-slate-300 hover:border-slate-600 hover:text-white"
+              >
+                Register
+              </button>
             </div>
             <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-xl border border-slate-800/60 bg-slate-900/40 p-4">
@@ -233,15 +330,82 @@ const LandingPage = () => {
             <span>Skyvern</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="/login" className="hover:text-white">
+            <button
+              className="hover:text-white"
+              onClick={() => {
+                setShowRegister(false);
+                setShowLogin(true);
+              }}
+            >
               Sign in
-            </a>
+            </button>
             <a href="https://docs.openalgo.in/" target="_blank" rel="noreferrer" className="hover:text-white">
               Docs
             </a>
           </div>
         </div>
       </footer>
+
+      {/* Modals */}
+      {modalMounted && (
+        <div
+          className={
+            "fixed inset-0 z-50 flex items-center justify-center px-4 transition-opacity duration-200 " +
+            (modalOpen ? "bg-black/60 opacity-100" : "bg-black/0 opacity-0")
+          }
+          role="dialog"
+          aria-modal
+          onClick={() => {
+            // Click outside closes
+            setShowLogin(false);
+            setShowRegister(false);
+          }}
+        >
+          <div
+            className={
+              "relative w-full max-w-md rounded-lg border border-slate-700 bg-white p-6 text-slate-900 shadow-2xl transition-all duration-200 " +
+              (modalOpen ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-2")
+            }
+            ref={panelRef}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              aria-label="Close"
+              className="absolute right-3 top-3 rounded p-1 text-slate-500 hover:bg-slate-100"
+              onClick={() => {
+                setShowLogin(false);
+                setShowRegister(false);
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <path fillRule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 01-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <div className="mt-2 flex flex-col items-center">
+              {showLogin && (
+                <LoginForm
+                  onSwitchToRegister={() => {
+                    setShowLogin(false);
+                    setShowRegister(true);
+                  }}
+                  onClose={() => {
+                    setShowLogin(false);
+                    setShowRegister(false);
+                  }}
+                />)
+              }
+              {showRegister && (
+                <RegisterForm
+                  onSwitchToLogin={() => {
+                    setShowRegister(false);
+                    setShowLogin(true);
+                  }}
+                />)
+              }
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

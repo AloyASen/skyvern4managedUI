@@ -26,15 +26,14 @@ import { WorkflowRunOutput } from "./routes/workflows/workflowRun/WorkflowRunOut
 import { WorkflowRunOverview } from "./routes/workflows/workflowRun/WorkflowRunOverview";
 import { WorkflowRunRecording } from "./routes/workflows/workflowRun/WorkflowRunRecording";
 import { DebugStoreProvider } from "@/store/DebugStoreContext";
-import { LoginPage } from "./routes/login/LoginPage";
-import { RegisterPage } from "./routes/register/RegisterPage";
+// Removed standalone login/register pages; handled via landing modals
 import { LandingPage } from "./routes/landing/LandingPage";
 import { useAuthStore } from "@/store/AuthStore";
 
 const ProtectedRoot = () => {
   const token = useAuthStore((s) => s.token);
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/" />;
   }
   return (
     <DebugStoreProvider>
@@ -95,14 +94,6 @@ const router = createBrowserRouter([
   {
     path: "/tasks/*",
     element: <LegacyRedirect base="/tasks" />,
-  },
-  {
-    path: "/login",
-    element: <LoginPage />,
-  },
-  {
-    path: "/register",
-    element: <RegisterPage />,
   },
   {
     path: "browser-session/:browserSessionId",

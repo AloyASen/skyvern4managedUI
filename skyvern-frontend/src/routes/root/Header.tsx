@@ -26,7 +26,7 @@ function Header() {
       title: "Logged out",
       description: "You have been signed out.",
     });
-    navigate("/login");
+    navigate("/");
   };
 
   const initials = (() => {
