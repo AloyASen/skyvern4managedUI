@@ -9,6 +9,9 @@ import structlog
 from fastapi import Body, Header, HTTPException
 from fastapi import status as http_status
 
+from skyvern.forge import app
+from skyvern.forge.sdk.core.security import create_access_token
+
 from .routers import legacy_base_router as router
 
 
@@ -156,7 +159,9 @@ async def login(
         machineId=(str(machine_id)[:6] + "***") if machine_id else None,
     )
     store = _load_store()
-    org_id = store.get("license_to_org", {}).get(license_key) or _org_id_from_license(license_key)
+    # Derive a stable user identifier from the license. All devices using the same
+    # license are grouped into the same organization.
+    user_id = _org_id_from_license(license_key)
 
     # Always call license server on login: must succeed and must be valid
     product_id = os.environ.get("PRODUCT_ID")
@@ -197,7 +202,11 @@ async def login(
             detail="License is invalid",
         )
 
-    # Persist mapping and the (valid) profile for future reference
+    # Create or fetch the user's organization in the database based on the derived user_id
+    db_org = await app.DATABASE.get_or_create_user_org(user_id)
+
+    # Persist mapping and the (valid) profile for future reference keyed by DB org id
+    org_id = db_org.organization_id
     store.setdefault("orgs", {})[org_id] = {
         "license_key": license_key,
         "machine_id": machine_id,
@@ -212,9 +221,8 @@ async def login(
         fields=list(profile.keys()) if isinstance(profile, dict) else None,
     )
 
-    # Return a simple access token and org ID
-    # Token can be any opaque string; UI uses it for subsequent calls
-    access_token = hashlib.sha256(f"{license_key}:{machine_id}".encode()).hexdigest()
+    # Mint a JWT compatible with Authorization: Bearer auth used by protected routes
+    access_token = create_access_token(subject=user_id)
 
     # Respond with any known profile details so UI can show immediately
     response: Dict[str, Any] = {

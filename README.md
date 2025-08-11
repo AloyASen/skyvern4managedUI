@@ -67,15 +67,12 @@ skyvern run all
 ```
 
 Go to http://localhost:8080 to access the landing page and click **Login**.
-Enter a product license key issued by your licensing server; the backend
-validates the key against your configured remote license server and provisions a user and
-organization on first use. All workflows, tasks, credentials and
-artifacts are tied to the returned `organizationID` (stored as
-`organization_id` in the database). The bootstrap credentials supplied
-via `INITIAL_USER_USERNAME`/`INITIAL_USER_PASSWORD` are mapped to
-*organization-1*; each new license login receives *organization-2*,
-*organization-3*, and so on. A logout button in the dashboard clears the
-session when finished.
+Enter a product license key issued by your licensing server. The backend
+validates the key against your configured remote license server and, on
+success, issues a JWT access token and creates (or reuses) a corresponding
+organization in the database. The dashboard stores the returned
+`organizationID` and uses the JWT via `Authorization: Bearer <token>` for
+all subsequent API calls.
 
 > Note: The UI no longer calls the license server directly from the browser.
 > All license validation is proxied through the Skyvern backend to avoid
