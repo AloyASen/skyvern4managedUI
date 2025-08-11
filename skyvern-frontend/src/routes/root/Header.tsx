@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { NavigationHamburgerMenu } from "./NavigationHamburgerMenu";
 import { useAuthStore } from "@/store/AuthStore";
 import { useProfileStore } from "@/store/ProfileStore";
+import { queryClient } from "@/api/QueryClient";
+import { toast } from "@/components/ui/use-toast";
 
 function Header() {
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -11,8 +13,19 @@ function Header() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    // Clear all cached queries to avoid cross-org data leakage
+    try {
+      queryClient.clear();
+    } catch {
+      // best-effort cache clear
+    }
     setAuth(null, null);
     setProfile(null);
+    toast({
+      variant: "success",
+      title: "Logged out",
+      description: "You have been signed out.",
+    });
     navigate("/login");
   };
 

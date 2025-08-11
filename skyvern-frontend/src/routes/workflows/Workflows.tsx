@@ -45,6 +45,7 @@ import { WorkflowApiResponse } from "./types/workflowTypes";
 import { WorkflowCreateYAMLRequest } from "./types/workflowYamlTypes";
 import { WorkflowActions } from "./WorkflowActions";
 import { WorkflowTemplates } from "../discover/WorkflowTemplates";
+import { useAuthStore } from "@/store/AuthStore";
 
 const emptyWorkflowRequest: WorkflowCreateYAMLRequest = {
   title: "New Workflow",
@@ -64,8 +65,9 @@ function Workflows() {
   const [debouncedSearch] = useDebounce(search, 500);
   const page = searchParams.get("page") ? Number(searchParams.get("page")) : 1;
 
+  const orgId = useAuthStore((s) => s.organizationID);
   const { data: workflows, isLoading } = useQuery<Array<WorkflowApiResponse>>({
-    queryKey: ["workflows", debouncedSearch, page],
+    queryKey: ["workflows", orgId, debouncedSearch, page],
     queryFn: async () => {
       const client = await getClient(credentialGetter);
       const params = new URLSearchParams();

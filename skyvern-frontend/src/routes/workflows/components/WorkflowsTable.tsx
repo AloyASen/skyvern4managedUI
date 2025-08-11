@@ -24,14 +24,16 @@ import { cn } from "@/util/utils";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { WorkflowApiResponse } from "../types/workflowTypes";
+import { useAuthStore } from "@/store/AuthStore";
 
 function WorkflowsTable() {
   const [page, setPage] = useState(1);
   const credentialGetter = useCredentialGetter();
   const navigate = useNavigate();
 
+  const orgId = useAuthStore((s) => s.organizationID);
   const { data: workflows, isLoading } = useQuery<Array<WorkflowApiResponse>>({
-    queryKey: ["workflows", page],
+    queryKey: ["workflows", orgId, page],
     queryFn: async () => {
       const client = await getClient(credentialGetter);
       const params = new URLSearchParams();

@@ -21,6 +21,7 @@ import {
   TaskBlock,
   WorkflowApiResponse,
 } from "@/routes/workflows/types/workflowTypes";
+import { useAuthStore } from "@/store/AuthStore";
 
 function createEmptyTaskTemplate() {
   return {
@@ -57,10 +58,11 @@ function SavedTasks() {
   const navigate = useNavigate();
   const [hovering, setHovering] = useState(false);
 
+  const orgId = useAuthStore((s) => s.organizationID);
   const { data, isLoading: savedTasksIsLoading } = useQuery<
     Array<WorkflowApiResponse>
   >({
-    queryKey: ["savedTasks"],
+    queryKey: ["savedTasks", orgId],
     queryFn: async () => {
       const client = await getClient(credentialGetter);
       return client
