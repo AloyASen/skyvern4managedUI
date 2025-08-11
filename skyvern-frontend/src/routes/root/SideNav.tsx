@@ -41,6 +41,11 @@ function SideNav() {
         title={"General"}
         links={[
           {
+            label: "Documentation",
+            to: "https://docs.openalgo.in/",
+            newTab: true,
+          },
+          {
             label: "Settings",
             to: "/dashboard/settings",
             icon: <GearIcon className="size-6" />,
