@@ -46,7 +46,12 @@ class Settings(BaseSettings):
     LOG_RAW_API_REQUESTS: bool = True
     LOG_LEVEL: str = "INFO"
     PORT: int = 8000
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    # Explicit dev origins to ensure CORS works with credentials from the UI
+    # You can override via env var `ALLOWED_ORIGINS` (comma-separated or JSON list)
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
     BLOCKED_HOSTS: list[str] = ["localhost"]
     ALLOWED_HOSTS: list[str] = []
 
