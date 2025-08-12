@@ -27,15 +27,14 @@ function DeleteCredentialButton({ credential }: Props) {
   const credentialGetter = useCredentialGetter();
   const queryClient = useQueryClient();
 
+  const organizationID = typeof window !== "undefined" ? localStorage.getItem("organizationID") : null;
   const deleteCredentialMutation = useMutation({
     mutationFn: async (id: string) => {
       const client = await getClient(credentialGetter);
       return client.delete(`/credentials/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["credentials"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["credentials", organizationID ?? ""] });
       toast({
         title: "Credential deleted",
         variant: "success",

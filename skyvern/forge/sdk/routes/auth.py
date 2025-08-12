@@ -10,6 +10,8 @@ from fastapi import Body, Header, HTTPException
 from fastapi import status as http_status
 
 from skyvern.forge import app
+from skyvern.forge.sdk.services.org_auth_token_service import create_org_api_token
+from skyvern.forge.sdk.db.enums import OrganizationAuthTokenType
 from skyvern.forge.sdk.core.security import create_access_token
 
 from .routers import legacy_base_router as router
@@ -220,6 +222,18 @@ async def login(
         has_user=isinstance(profile, dict) and bool(profile.get("user")),
         fields=list(profile.keys()) if isinstance(profile, dict) else None,
     )
+
+    # Ensure an organization API key exists and is persisted (survives restarts)
+    try:
+        existing = await app.DATABASE.get_valid_org_auth_token(
+            org_id, OrganizationAuthTokenType.api
+        )
+        if not existing:
+            await create_org_api_token(org_id)
+            LOG.info("org_api_key_created", organizationID=org_id)
+    except Exception:
+        # Non-fatal: login should still succeed; UI can fetch/generate later if needed
+        LOG.exception("org_api_key_create_failed", organizationID=org_id)
 
     # Mint a JWT compatible with Authorization: Bearer auth used by protected routes
     access_token = create_access_token(subject=user_id)

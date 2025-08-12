@@ -63,6 +63,7 @@ type Props = {
 function CredentialsModal({ onCredentialCreated }: Props) {
   const credentialGetter = useCredentialGetter();
   const queryClient = useQueryClient();
+  const organizationID = typeof window !== "undefined" ? localStorage.getItem("organizationID") : null;
   const { isOpen, type, setIsOpen } = useCredentialModalState();
   const { data: credentials } = useCredentialsQuery();
   const [passwordCredentialValues, setPasswordCredentialValues] = useState(
@@ -102,9 +103,7 @@ function CredentialsModal({ onCredentialCreated }: Props) {
     },
     onSuccess: (data) => {
       setIsOpen(false);
-      queryClient.invalidateQueries({
-        queryKey: ["credentials"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["credentials", organizationID ?? ""] });
       toast({
         title: "Credential created",
         description: "Your credential has been created successfully",
