@@ -14,20 +14,22 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-from skyvern.forge.sdk.db import models
-
-target_metadata = models.Base.metadata
+# for 'autogenerate' support. We attempt to import models, but if
+# not available (e.g., compiled-only packaging or trimmed wheels),
+# fall back to None which is sufficient for running migrations.
+# In compiled-only runtime, avoid importing the application's models during migrations.
+# Set target_metadata=None which is sufficient for applying migrations.
+target_metadata = None
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from skyvern.forge.sdk.settings_manager import SettingsManager
+import os
 
-config.set_main_option("sqlalchemy.url", SettingsManager.get_settings().DATABASE_STRING)
+# Prefer runtime env var for the database URL to avoid importing app modules
+db_url = os.getenv("DATABASE_STRING") or config.get_main_option("sqlalchemy.url")
+config.set_main_option("sqlalchemy.url", db_url)
 
 
 def run_migrations_offline() -> None:

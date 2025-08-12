@@ -36,8 +36,8 @@ services:
       - ./log:/data/log
       - ./.streamlit:/app/.streamlit
       # Uncomment the following two lines if you want to connect to any local changes
-      - ./skyvern:/app/skyvern
-      - ./alembic:/app/alembic
+      # - ./skyvern:/app/skyvern
+      # - ./alembic:/app/alembic
     environment:
       - DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
       - BROWSER_TYPE=chromium-headful
@@ -142,19 +142,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ui
+      target: runtime-build
     image: skyvern-ui:local
     restart: on-failure
     ports:
       - 8080:8080
-      - 9090:9090
-    volumes:
-      - ./artifacts:/data/artifacts
-      - ./videos:/data/videos
-      - ./har:/data/har
-      - ./.streamlit:/app/.streamlit
-    env_file:
-      - skyvern-frontend/.env
-    environment: {}
     #  - VITE_ENABLE_CODE_BLOCK=true
     # if you want to run skyvern on a remote server,
     # you need to change the host in VITE_WSS_BASE_URL and VITE_API_BASE_URL to match your server ip

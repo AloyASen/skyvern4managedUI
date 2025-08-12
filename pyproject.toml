@@ -4,7 +4,11 @@ version = "0.2.6"
 description = ""
 authors = ["Skyvern AI <info@skyvern.com>"]
 readme = "README.md"
-packages = [{ include = "skyvern" }, { include = "alembic" }]
+packages = [
+    { include = "skyvern" },
+    { include = "alembic" },
+    { include = "scripts" }
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"

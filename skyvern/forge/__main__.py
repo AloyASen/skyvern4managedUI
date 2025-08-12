@@ -2,7 +2,7 @@ import structlog
 import uvicorn
 from dotenv import load_dotenv
 
-from skyvern import analytics
+from skyvern import analytics  # lazy import ok; __init__ is now lightweight
 from skyvern.config import settings
 
 LOG = structlog.stdlib.get_logger()

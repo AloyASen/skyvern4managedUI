@@ -13,8 +13,10 @@ from starlette_context.middleware import RawContextMiddleware
 from starlette_context.plugins.base import Plugin
 
 from skyvern.config import settings
+from skyvern.forge.sdk.forge_log import setup_logger
 from skyvern.exceptions import SkyvernHTTPException
-from skyvern.forge import app as forge_app
+# Lazily import heavy app wiring to avoid side effects at import time
+forge_app = None  # type: ignore
 from skyvern.forge.request_logging import log_raw_request_middleware
 from skyvern.forge.sdk.core import skyvern_context
 from skyvern.forge.sdk.core.skyvern_context import SkyvernContext
@@ -54,6 +56,8 @@ def get_agent_app() -> FastAPI:
     Start the agent server.
     """
 
+    # Initialize logging on app creation to avoid doing it in package __init__
+    setup_logger()
     app = FastAPI()
 
     # Add CORS middleware
@@ -127,8 +131,13 @@ def get_agent_app() -> FastAPI:
             modules=settings.ADDITIONAL_MODULES,
         )
 
-    if forge_app.setup_api_app:
-        forge_app.setup_api_app(app)
+    # Lazily import to avoid import-time initialization failures
+    global forge_app
+    if forge_app is None:
+        from skyvern.forge import app as forge_app  # type: ignore
+
+    if getattr(forge_app, "setup_api_app", None):
+        forge_app.setup_api_app(app)  # type: ignore
 
     return app
 

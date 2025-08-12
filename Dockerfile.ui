@@ -1,14 +1,32 @@
-FROM node:20.12-slim
-
+FROM node:20.12-slim AS build
 WORKDIR /app
 COPY ./skyvern-frontend /app
-COPY ./entrypoint-skyvernui.sh /app/entrypoint-skyvernui.sh
-RUN npm install
 
+# Build-time env for Vite
 ENV VITE_API_BASE_URL=http://localhost:8000/api/v1
 ENV VITE_WSS_BASE_URL=ws://localhost:8000/api/v1
 ENV VITE_ARTIFACT_API_BASE_URL=http://localhost:9090
 ENV VITE_LICENSE_SERVER_URL=http://localhost:3000
 
-CMD [ "/bin/bash", "/app/entrypoint-skyvernui.sh" ]
+RUN npm ci && npm run build \
+  && mkdir -p /out \
+  && cp -R dist/. /out/
 
+# Fallback stage to use a prebuilt dist from the context when network is unavailable
+FROM alpine:3.20 AS localdist
+WORKDIR /src
+COPY ./skyvern-frontend/dist/ /out/
+
+# Runtime image using artifacts from the network build
+FROM nginx:1.27-alpine AS runtime-localdist
+COPY --from=localdist /out/ /usr/share/nginx/html/
+COPY ./skyvern-frontend/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 8080
+CMD ["nginx","-g","daemon off;"]
+
+# Default runtime image using artifacts from the Node build stage
+FROM nginx:1.27-alpine AS runtime-build
+COPY --from=build /out/ /usr/share/nginx/html/
+COPY ./skyvern-frontend/nginx.conf /etc/nginx/nginx.conf
+EXPOSE 8080
+CMD ["nginx","-g","daemon off;"]
