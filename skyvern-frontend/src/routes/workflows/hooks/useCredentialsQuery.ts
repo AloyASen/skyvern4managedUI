@@ -2,6 +2,7 @@ import { getClient } from "@/api/AxiosClient";
 import { CredentialApiResponse } from "@/api/types";
 import { useCredentialGetter } from "@/hooks/useCredentialGetter";
 import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/AuthStore";
 
 type QueryReturnType = Array<CredentialApiResponse>;
 type UseQueryOptions = Omit<
@@ -13,9 +14,11 @@ type Props = UseQueryOptions;
 
 function useCredentialsQuery(props: Props = {}) {
   const credentialGetter = useCredentialGetter();
+  const organizationID = useAuthStore((s) => s.organizationID);
 
   return useQuery<Array<CredentialApiResponse>>({
-    queryKey: ["credentials"],
+    // Include org in the key to avoid cross-license cache bleed
+    queryKey: ["credentials", organizationID],
     queryFn: async () => {
       const client = await getClient(credentialGetter);
       const params = new URLSearchParams();

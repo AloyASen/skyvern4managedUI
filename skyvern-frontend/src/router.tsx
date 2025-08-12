@@ -29,6 +29,7 @@ import { DebugStoreProvider } from "@/store/DebugStoreContext";
 // Removed standalone login/register pages; handled via landing modals
 import { LandingPage } from "./routes/landing/LandingPage";
 import { useAuthStore } from "@/store/AuthStore";
+import { CredentialsPage } from "./routes/credentials/CredentialsPage";
 
 const ProtectedRoot = () => {
   const token = useAuthStore((s) => s.token);
@@ -245,6 +246,16 @@ const router = createBrowserRouter([
           {
             index: true,
             element: <HistoryPage />,
+          },
+        ],
+      },
+      {
+        path: "credentials",
+        element: <PageLayout />,
+        children: [
+          {
+            index: true,
+            element: <CredentialsPage />,
           },
         ],
       },

@@ -9,6 +9,7 @@ import {
   GearIcon,
   LightningBoltIcon,
 } from "@radix-ui/react-icons";
+import { KeyIcon } from "@/components/icons/KeyIcon";
 
 function SideNav() {
   const { collapsed } = useSidebarStore();
@@ -51,6 +52,16 @@ function SideNav() {
             // Show a docs icon (badge-style indicator) when license is validated
             icon: hasValidatedLicense ? <BookIcon className="size-6" /> : undefined,
           },
+          // Show Credentials only after license is validated
+          ...(hasValidatedLicense
+            ? ([
+                {
+                  label: "Credentials",
+                  to: "/dashboard/credentials",
+                  icon: <KeyIcon className="size-6" />,
+                },
+              ] as const)
+            : ([] as const)),
           {
             label: "Settings",
             to: "/dashboard/settings",
