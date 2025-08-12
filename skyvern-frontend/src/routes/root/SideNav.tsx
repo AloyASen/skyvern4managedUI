@@ -1,6 +1,8 @@
 import { CompassIcon } from "@/components/icons/CompassIcon";
+import { BookIcon } from "@/components/icons/BookIcon";
 import { NavLinkGroup } from "@/components/NavLinkGroup";
 import { useSidebarStore } from "@/store/SidebarStore";
+import { useProfileStore } from "@/store/ProfileStore";
 import { cn } from "@/util/utils";
 import {
   CounterClockwiseClockIcon,
@@ -10,6 +12,8 @@ import {
 
 function SideNav() {
   const { collapsed } = useSidebarStore();
+  // Treat presence of a profile as validated license
+  const hasValidatedLicense = !!useProfileStore((s) => s.profile);
 
   return (
     <nav
@@ -44,6 +48,8 @@ function SideNav() {
             label: "Documentation",
             to: "https://docs.openalgo.in/",
             newTab: true,
+            // Show a docs icon (badge-style indicator) when license is validated
+            icon: hasValidatedLicense ? <BookIcon className="size-6" /> : undefined,
           },
           {
             label: "Settings",
