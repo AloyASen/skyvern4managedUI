@@ -1,7 +1,5 @@
 import hashlib
-import json
 import os
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 import httpx
@@ -17,27 +15,7 @@ from skyvern.forge.sdk.core.security import create_access_token
 from .routers import legacy_base_router as router
 
 
-PERSIST_DIR = Path(os.environ.get("PERSIST_DIR", "/app/.streamlit"))
-PERSIST_FILE = PERSIST_DIR / "organizations.json"
 LOG = structlog.get_logger()
-
-
-def _load_store() -> Dict[str, Any]:
-    try:
-        if PERSIST_FILE.exists():
-            return json.loads(PERSIST_FILE.read_text())
-    except Exception:
-        pass
-    return {"orgs": {}, "license_to_org": {}}
-
-
-def _save_store(data: Dict[str, Any]) -> None:
-    try:
-        PERSIST_DIR.mkdir(parents=True, exist_ok=True)
-        PERSIST_FILE.write_text(json.dumps(data, indent=2))
-    except Exception as e:
-        # Best-effort persistence; do not crash auth
-        LOG.warning("auth_persist_failed", error=str(e))
 
 
 def _org_id_from_license(license_key: str) -> str:
@@ -160,7 +138,6 @@ async def login(
         licenseKey="***",  # never log raw key
         machineId=(str(machine_id)[:6] + "***") if machine_id else None,
     )
-    store = _load_store()
     # Derive a stable user identifier from the license. All devices using the same
     # license are grouped into the same organization.
     user_id = _org_id_from_license(license_key)
@@ -207,15 +184,17 @@ async def login(
     # Create or fetch the user's organization in the database based on the derived user_id
     db_org = await app.DATABASE.get_or_create_user_org(user_id)
 
-    # Persist mapping and the (valid) profile for future reference keyed by DB org id
+    # Persist license mapping, machine association, and profile in Postgres
     org_id = db_org.organization_id
-    store.setdefault("orgs", {})[org_id] = {
-        "license_key": license_key,
-        "machine_id": machine_id,
-        "profile": profile,
-    }
-    store.setdefault("license_to_org", {})[license_key] = org_id
-    _save_store(store)
+    try:
+        await app.DATABASE.upsert_org_license_machine_profile(
+            organization_id=org_id,
+            license_key=license_key,
+            machine_id=machine_id,
+            profile=profile if isinstance(profile, dict) else None,
+        )
+    except Exception:
+        LOG.exception("persist_org_license_profile_failed", organizationID=org_id)
     LOG.info(
         "license_profile_persisted",
         organizationID=org_id,
@@ -257,9 +236,12 @@ async def get_profile(
 ):
     if not organization_id:
         raise HTTPException(status_code=400, detail="X-Organization-ID header is required")
-    store = _load_store()
-    org = store.get("orgs", {}).get(organization_id)
-    if not org:
+    try:
+        prof = await app.DATABASE.get_organization_profile(organization_id)
+    except Exception:
+        LOG.exception("get_profile_db_error", organizationID=organization_id)
+        prof = None
+    if not prof:
         return {
             "name": None,
             "email": None,
@@ -267,21 +249,10 @@ async def get_profile(
             "market": None,
             "plan": None,
         }
-    profile = org.get("profile")
-    # Normalize a few known shapes
-    if isinstance(profile, dict):
-        user = profile.get("user") or {}
-        return {
-            "name": user.get("name") or profile.get("name"),
-            "email": user.get("email") or profile.get("email"),
-            "licenseType": profile.get("licenseType") or profile.get("license_type"),
-            "market": profile.get("market"),
-            "plan": profile.get("plan") or (profile.get("license") or {}).get("plan"),
-        }
     return {
-        "name": None,
-        "email": None,
-        "licenseType": None,
-        "market": None,
-        "plan": None,
+        "name": prof.name,
+        "email": prof.email,
+        "licenseType": prof.license_type,
+        "market": prof.market,
+        "plan": prof.plan,
     }

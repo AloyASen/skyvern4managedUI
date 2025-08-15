@@ -34,6 +34,8 @@ from skyvern.forge.sdk.db.id import (
     generate_organization_auth_token_id,
     generate_organization_bitwarden_collection_id,
     generate_output_parameter_id,
+    generate_organization_license_id,
+    generate_organization_machine_id,
     generate_persistent_browser_session_id,
     generate_project_file_id,
     generate_project_id,
@@ -178,6 +180,41 @@ class OrganizationAuthTokenModel(Base):
         nullable=False,
     )
     deleted_at = Column(DateTime, nullable=True)
+
+
+class OrganizationLicenseModel(Base):
+    __tablename__ = "organization_licenses"
+
+    id = Column(String, primary_key=True, default=generate_organization_license_id)
+    organization_id = Column(String, ForeignKey("organizations.organization_id"), index=True, nullable=False)
+    license_key_hash = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+
+class OrganizationMachineModel(Base):
+    __tablename__ = "organization_machines"
+
+    id = Column(String, primary_key=True, default=generate_organization_machine_id)
+    license_id = Column(String, ForeignKey("organization_licenses.id"), index=True, nullable=False)
+    machine_id = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    __table_args__ = (UniqueConstraint("license_id", "machine_id", name="uq_license_machine"),)
+
+
+class OrganizationProfileModel(Base):
+    __tablename__ = "organization_profiles"
+
+    organization_id = Column(String, ForeignKey("organizations.organization_id"), primary_key=True)
+    name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    license_type = Column(String, nullable=True)
+    market = Column(String, nullable=True)
+    plan = Column(String, nullable=True)
+    franchise_name = Column(String, nullable=True)
+    partner_name = Column(String, nullable=True)
+    days_left = Column(Integer, nullable=True)
+    valid = Column(Boolean, nullable=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
 
 class UserClientModel(Base):

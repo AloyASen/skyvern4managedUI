@@ -78,6 +78,8 @@ all subsequent API calls.
 > All license validation is proxied through the Skyvern backend to avoid
 > cross-origin/CORS issues and to keep credentials server-side.
 
+Persistence note: Organization creation, license-to-organization mapping, machines, and profile data are now stored in Postgres; see `docs/ORGANIZATIONS_DB.md`.
+
 #### Code
 
 ```python

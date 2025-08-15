@@ -25,6 +25,9 @@ from skyvern.forge.sdk.db.models import (
     DebugSessionModel,
     OnePasswordCredentialParameterModel,
     OrganizationAuthTokenModel,
+    OrganizationLicenseModel,
+    OrganizationMachineModel,
+    OrganizationProfileModel,
     OrganizationBitwardenCollectionModel,
     OrganizationModel,
     OutputParameterModel,
@@ -58,6 +61,7 @@ from skyvern.forge.sdk.db.utils import (
     convert_to_output_parameter,
     convert_to_project,
     convert_to_project_file,
+    convert_to_organization_profile,
     convert_to_step,
     convert_to_task,
     convert_to_workflow,
@@ -75,6 +79,7 @@ from skyvern.forge.sdk.schemas.credentials import Credential, CredentialType
 from skyvern.forge.sdk.schemas.debug_sessions import DebugSession
 from skyvern.forge.sdk.schemas.organization_bitwarden_collections import OrganizationBitwardenCollection
 from skyvern.forge.sdk.schemas.organizations import Organization, OrganizationAuthToken
+from skyvern.forge.sdk.schemas.org_profiles import OrganizationProfile
 from skyvern.forge.sdk.schemas.persistent_browser_sessions import PersistentBrowserSession
 from skyvern.forge.sdk.schemas.runs import Run
 from skyvern.forge.sdk.schemas.task_generations import TaskGeneration
@@ -132,6 +137,12 @@ class AgentDB:
             else db_engine
         )
         self.Session = async_sessionmaker(bind=self.engine)
+
+    @staticmethod
+    def _hash_license_key(license_key: str) -> str:
+        import hashlib
+
+        return hashlib.sha256(license_key.encode("utf-8")).hexdigest()
 
     async def create_task(
         self,
@@ -782,6 +793,110 @@ class AgentDB:
         except Exception:
             LOG.error("UnexpectedError", exc_info=True)
             raise
+
+    async def upsert_org_license_machine_profile(
+        self,
+        organization_id: str,
+        license_key: str,
+        machine_id: str,
+        profile: dict[str, Any] | None,
+    ) -> None:
+        """
+        Persist license->organization mapping, machine association, and the latest profile snapshot.
+
+        - Maps unique license hash to the organization (one-to-one).
+        - Associates the machine_id to the license (unique per license).
+        - Upserts the organization's current profile shape.
+        """
+        license_hash = self._hash_license_key(license_key)
+        async with self.Session() as session:
+            # Upsert license mapping
+            lic = (
+                await session.scalars(
+                    select(OrganizationLicenseModel).where(OrganizationLicenseModel.license_key_hash == license_hash)
+                )
+            ).first()
+            if not lic:
+                lic = OrganizationLicenseModel(
+                    organization_id=organization_id,
+                    license_key_hash=license_hash,
+                )
+                session.add(lic)
+                await session.flush()
+            elif lic.organization_id != organization_id:
+                # Keep original mapping; log mismatch without breaking login
+                LOG.warning(
+                    "license_org_mismatch",
+                    license_hash=license_hash,
+                    existing_org_id=lic.organization_id,
+                    attempted_org_id=organization_id,
+                )
+
+            # Upsert machine association
+            existing_machine = (
+                await session.scalars(
+                    select(OrganizationMachineModel)
+                    .where(OrganizationMachineModel.license_id == lic.id)
+                    .where(OrganizationMachineModel.machine_id == machine_id)
+                )
+            ).first()
+            if not existing_machine:
+                session.add(
+                    OrganizationMachineModel(
+                        license_id=lic.id,
+                        machine_id=machine_id,
+                    )
+                )
+
+            # Upsert current org profile
+            if profile is not None:
+                user = profile.get("user") if isinstance(profile, dict) else None
+                name = None
+                email = None
+                if isinstance(user, dict):
+                    name = user.get("name")
+                    email = user.get("email")
+                prof = (
+                    await session.scalars(
+                        select(OrganizationProfileModel).where(
+                            OrganizationProfileModel.organization_id == organization_id
+                        )
+                    )
+                ).first()
+                if not prof:
+                    prof = OrganizationProfileModel(organization_id=organization_id)
+                    session.add(prof)
+
+                prof.name = name or profile.get("name")
+                prof.email = email or profile.get("email")
+                prof.license_type = profile.get("licenseType") or profile.get("license_type")
+                prof.market = profile.get("market")
+                prof.plan = profile.get("plan") or (profile.get("license") or {}).get("plan")
+                prof.franchise_name = profile.get("franchiseName")
+                prof.partner_name = profile.get("partnerName")
+                try:
+                    days_left_val = profile.get("days_left")
+                    prof.days_left = int(days_left_val) if days_left_val is not None else None
+                except Exception:
+                    prof.days_left = None
+                valid_field = profile.get("valid")
+                if isinstance(valid_field, bool):
+                    prof.valid = valid_field
+                elif isinstance(valid_field, str):
+                    prof.valid = valid_field.strip().lower() in {"true", "1", "yes", "y"}
+
+            await session.commit()
+
+    async def get_organization_profile(self, organization_id: str) -> OrganizationProfile | None:
+        async with self.Session() as session:
+            prof = (
+                await session.scalars(
+                    select(OrganizationProfileModel).where(OrganizationProfileModel.organization_id == organization_id)
+                )
+            ).first()
+            if not prof:
+                return None
+            return convert_to_organization_profile(prof)
 
     async def get_organization(self, organization_id: str) -> Organization | None:
         try:

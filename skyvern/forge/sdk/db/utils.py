@@ -25,9 +25,11 @@ from skyvern.forge.sdk.db.models import (
     WorkflowRunModel,
     WorkflowRunOutputParameterModel,
     WorkflowRunParameterModel,
+    OrganizationProfileModel,
 )
 from skyvern.forge.sdk.models import Step, StepStatus
 from skyvern.forge.sdk.schemas.organizations import Organization, OrganizationAuthToken
+from skyvern.forge.sdk.schemas.org_profiles import OrganizationProfile
 from skyvern.forge.sdk.schemas.tasks import Task, TaskStatus
 from skyvern.forge.sdk.schemas.workflow_runs import WorkflowRunBlock
 from skyvern.forge.sdk.workflow.models.block import BlockStatus, BlockType
@@ -201,6 +203,22 @@ def convert_to_organization_auth_token(
         valid=org_auth_token.valid,
         created_at=org_auth_token.created_at,
         modified_at=org_auth_token.modified_at,
+    )
+
+
+def convert_to_organization_profile(model: OrganizationProfileModel) -> OrganizationProfile:
+    return OrganizationProfile(
+        organization_id=model.organization_id,
+        name=model.name,
+        email=model.email,
+        license_type=model.license_type,
+        market=model.market,
+        plan=model.plan,
+        franchise_name=model.franchise_name,
+        partner_name=model.partner_name,
+        days_left=model.days_left,
+        valid=model.valid,
+        updated_at=model.updated_at,
     )
 
 

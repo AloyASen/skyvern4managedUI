@@ -42,6 +42,8 @@ ORGANIZATION_BITWARDEN_COLLECTION_PREFIX = "obc"
 TASK_V2_ID = "tsk_v2"
 THOUGHT_ID = "ot"
 ORGANIZATION_AUTH_TOKEN_PREFIX = "oat"
+ORGANIZATION_LICENSE_PREFIX = "olc"
+ORGANIZATION_MACHINE_PREFIX = "om"
 ORG_PREFIX = "o"
 OUTPUT_PARAMETER_PREFIX = "op"
 PERSISTENT_BROWSER_SESSION_ID = "pbs"
@@ -119,6 +121,16 @@ def generate_onepassword_credential_parameter_id() -> str:
 def generate_organization_auth_token_id() -> str:
     int_id = generate_id()
     return f"{ORGANIZATION_AUTH_TOKEN_PREFIX}_{int_id}"
+
+
+def generate_organization_license_id() -> str:
+    int_id = generate_id()
+    return f"{ORGANIZATION_LICENSE_PREFIX}_{int_id}"
+
+
+def generate_organization_machine_id() -> str:
+    int_id = generate_id()
+    return f"{ORGANIZATION_MACHINE_PREFIX}_{int_id}"
 
 
 def generate_org_id() -> str:
