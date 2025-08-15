@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import CloudContext from "@/store/CloudContext";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { useContext, useState } from "react";
 import { CredentialParameterSourceSelector } from "../../components/CredentialParameterSourceSelector";
@@ -48,18 +47,11 @@ function header(type: WorkflowEditorParameterType) {
   if (type === "credential") {
     return "Add Credential Parameter";
   }
-  if (type === "secret") {
-    return "Add Secret Parameter";
-  }
-  if (type === "creditCardData") {
-    return "Add Credit Card Parameter";
-  }
   return "Add Context Parameter";
 }
 
 function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
   const reservedKeys = ["current_item", "current_value", "current_index"];
-  const isCloud = useContext(CloudContext);
   const [key, setKey] = useState("");
   const [description, setDescription] = useState("");
   const [parameterType, setParameterType] =
@@ -77,10 +69,7 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
 
   const [credentialId, setCredentialId] = useState("");
 
-  const [identityKey, setIdentityKey] = useState("");
-  const [identityFields, setIdentityFields] = useState("");
-  const [sensitiveInformationItemId, setSensitiveInformationItemId] =
-    useState("");
+  // External secret providers removed; no additional state needed
 
   // credentialId is used for Skyvern credentials only
 
@@ -207,67 +196,7 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
               />
             </div>
           )}
-          {type === "secret" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Identity Key</Label>
-                <Input
-                  value={identityKey}
-                  onChange={(e) => setIdentityKey(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">
-                  Identity Fields
-                </Label>
-                <Input
-                  value={identityFields}
-                  onChange={(e) => setIdentityFields(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={bitwardenCollectionId}
-                  onChange={(e) => setBitwardenCollectionId(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-          {type === "creditCardData" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={bitwardenCollectionId}
-                  onChange={(e) => setBitwardenCollectionId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={sensitiveInformationItemId}
-                  onChange={(e) =>
-                    setSensitiveInformationItemId(e.target.value)
-                  }
-                />
-              </div>
-            </>
-          )}
-          {
-            // temporarily cloud only
-            type === "credential" &&
-              credentialType === "skyvern" &&
-              isCloud && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-300">Credential</Label>
-                  <CredentialParameterSourceSelector
-                    value={credentialId}
-                    onChange={(value) => setCredentialId(value)}
-                  />
-                </div>
-              )
-          }
+          {/* Only Skyvern credentials are supported */}
           <div className="flex justify-end">
             <Button
               onClick={() => {
@@ -318,85 +247,7 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
                       : null,
                   });
                 }
-                if (type === "credential" && credentialType === "bitwarden") {
-                  const errorMessage = validateBitwardenLoginCredential(
-                    bitwardenCollectionId,
-                    bitwardenLoginCredentialItemId,
-                    urlParameterKey,
-                  );
-                  if (errorMessage) {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to save parameter",
-                      description: errorMessage,
-                    });
-                    return;
-                  }
-                  onSave({
-                    key,
-                    parameterType: "credential",
-                    collectionId:
-                      bitwardenCollectionId === ""
-                        ? null
-                        : bitwardenCollectionId,
-                    itemId:
-                      bitwardenLoginCredentialItemId === ""
-                        ? null
-                        : bitwardenLoginCredentialItemId,
-                    urlParameterKey:
-                      urlParameterKey === "" ? null : urlParameterKey,
-                    description,
-                  });
-                }
-                if (type === "credential" && credentialType === "onepassword") {
-                  if (vaultId.trim() === "" || itemId.trim() === "") {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to add parameter",
-                      description: "Vault ID and Item ID are required",
-                    });
-                    return;
-                  }
-                  onSave({
-                    key,
-                    parameterType: "onepassword",
-                    vaultId,
-                    itemId,
-                    description,
-                  });
-                }
-                if (type === "secret" || type === "creditCardData") {
-                  if (!bitwardenCollectionId) {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to save parameter",
-                      description: "Collection ID is required",
-                    });
-                    return;
-                  }
-                }
-                if (type === "secret") {
-                  onSave({
-                    key,
-                    parameterType: "secret",
-                    collectionId: bitwardenCollectionId,
-                    identityFields: identityFields
-                      .split(",")
-                      .filter((s) => s.length > 0)
-                      .map((field) => field.trim()),
-                    identityKey,
-                    description,
-                  });
-                }
-                if (type === "creditCardData") {
-                  onSave({
-                    key,
-                    parameterType: "creditCardData",
-                    collectionId: bitwardenCollectionId,
-                    itemId: sensitiveInformationItemId,
-                    description,
-                  });
-                }
+                // External providers removed; only Skyvern credential, workflow, and context parameters are supported
                 if (type === "context") {
                   if (!sourceParameterKey) {
                     toast({

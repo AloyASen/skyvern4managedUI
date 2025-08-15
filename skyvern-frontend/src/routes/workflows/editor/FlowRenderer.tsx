@@ -49,24 +49,16 @@ import {
   WorkflowSettings,
 } from "../types/workflowTypes";
 import {
-  BitwardenCreditCardDataParameterYAML,
-  BitwardenLoginCredentialParameterYAML,
-  BitwardenSensitiveInformationParameterYAML,
   BlockYAML,
   ContextParameterYAML,
   CredentialParameterYAML,
-  OnePasswordCredentialParameterYAML,
   ParameterYAML,
   WorkflowCreateYAMLRequest,
   WorkflowParameterYAML,
 } from "../types/workflowYamlTypes";
 import { WorkflowHeader } from "./WorkflowHeader";
 import { WorkflowParametersStateContext } from "./WorkflowParametersStateContext";
-import {
-  BITWARDEN_CLIENT_ID_AWS_SECRET_KEY,
-  BITWARDEN_CLIENT_SECRET_AWS_SECRET_KEY,
-  BITWARDEN_MASTER_PASSWORD_AWS_SECRET_KEY,
-} from "./constants";
+// External provider constants removed
 import { edgeTypes } from "./edges";
 import {
   AppNode,
@@ -76,12 +68,7 @@ import {
 } from "./nodes";
 import { WorkflowNodeLibraryPanel } from "./panels/WorkflowNodeLibraryPanel";
 import { WorkflowParametersPanel } from "./panels/WorkflowParametersPanel";
-import {
-  ParametersState,
-  parameterIsSkyvernCredential,
-  parameterIsOnePasswordCredential,
-  parameterIsBitwardenCredential,
-} from "./types";
+import { ParametersState, parameterIsSkyvernCredential } from "./types";
 import "./reactFlowOverrideStyles.css";
 import {
   convertEchoParameters,
@@ -105,28 +92,12 @@ import { useAutoPan } from "./useAutoPan";
 
 function convertToParametersYAML(
   parameters: ParametersState,
-): Array<
-  | WorkflowParameterYAML
-  | BitwardenLoginCredentialParameterYAML
-  | ContextParameterYAML
-  | BitwardenSensitiveInformationParameterYAML
-  | BitwardenCreditCardDataParameterYAML
-  | OnePasswordCredentialParameterYAML
-  | CredentialParameterYAML
-> {
+): Array<WorkflowParameterYAML | ContextParameterYAML | CredentialParameterYAML> {
   return parameters
     .map(
       (
         parameter: ParametersState[number],
-      ):
-        | WorkflowParameterYAML
-        | BitwardenLoginCredentialParameterYAML
-        | ContextParameterYAML
-        | BitwardenSensitiveInformationParameterYAML
-        | BitwardenCreditCardDataParameterYAML
-        | OnePasswordCredentialParameterYAML
-        | CredentialParameterYAML
-        | undefined => {
+      ): WorkflowParameterYAML | ContextParameterYAML | CredentialParameterYAML | undefined => {
         if (parameter.parameterType === WorkflowEditorParameterTypes.Workflow) {
           return {
             parameter_type: WorkflowParameterTypes.Workflow,
@@ -146,72 +117,14 @@ function convertToParametersYAML(
             description: parameter.description || null,
             source_parameter_key: parameter.sourceParameterKey,
           };
-        } else if (
-          parameter.parameterType === WorkflowEditorParameterTypes.Secret
-        ) {
-          return {
-            parameter_type:
-              WorkflowParameterTypes.Bitwarden_Sensitive_Information,
-            key: parameter.key,
-            bitwarden_identity_key: parameter.identityKey,
-            bitwarden_identity_fields: parameter.identityFields,
-            description: parameter.description || null,
-            bitwarden_collection_id: parameter.collectionId,
-            bitwarden_client_id_aws_secret_key:
-              BITWARDEN_CLIENT_ID_AWS_SECRET_KEY,
-            bitwarden_client_secret_aws_secret_key:
-              BITWARDEN_CLIENT_SECRET_AWS_SECRET_KEY,
-            bitwarden_master_password_aws_secret_key:
-              BITWARDEN_MASTER_PASSWORD_AWS_SECRET_KEY,
-          };
-        } else if (
-          parameter.parameterType ===
-          WorkflowEditorParameterTypes.CreditCardData
-        ) {
-          return {
-            parameter_type: WorkflowParameterTypes.Bitwarden_Credit_Card_Data,
-            key: parameter.key,
-            description: parameter.description || null,
-            bitwarden_item_id: parameter.itemId,
-            bitwarden_collection_id: parameter.collectionId,
-            bitwarden_client_id_aws_secret_key:
-              BITWARDEN_CLIENT_ID_AWS_SECRET_KEY,
-            bitwarden_client_secret_aws_secret_key:
-              BITWARDEN_CLIENT_SECRET_AWS_SECRET_KEY,
-            bitwarden_master_password_aws_secret_key:
-              BITWARDEN_MASTER_PASSWORD_AWS_SECRET_KEY,
-          };
         } else {
-          if (parameterIsBitwardenCredential(parameter)) {
-            return {
-              parameter_type: WorkflowParameterTypes.Bitwarden_Login_Credential,
-              key: parameter.key,
-              description: parameter.description || null,
-              bitwarden_collection_id: parameter.collectionId,
-              bitwarden_item_id: parameter.itemId,
-              url_parameter_key: parameter.urlParameterKey,
-              bitwarden_client_id_aws_secret_key:
-                BITWARDEN_CLIENT_ID_AWS_SECRET_KEY,
-              bitwarden_client_secret_aws_secret_key:
-                BITWARDEN_CLIENT_SECRET_AWS_SECRET_KEY,
-              bitwarden_master_password_aws_secret_key:
-                BITWARDEN_MASTER_PASSWORD_AWS_SECRET_KEY,
-            };
-          } else if (parameterIsSkyvernCredential(parameter)) {
+          if (parameterIsSkyvernCredential(parameter)) {
             return {
               parameter_type: WorkflowParameterTypes.Workflow,
               workflow_parameter_type: WorkflowParameterValueType.CredentialId,
               default_value: parameter.credentialId,
               key: parameter.key,
               description: parameter.description || null,
-            };
-          } else if (parameterIsOnePasswordCredential(parameter)) {
-            return {
-              parameter_type: WorkflowParameterTypes.OnePassword,
-              key: parameter.key,
-              description: parameter.description || null,
-              vault_id: parameter.vaultId,
-              item_id: parameter.itemId,
             };
           }
         }
@@ -220,23 +133,9 @@ function convertToParametersYAML(
     )
     .filter(
       (
-        param:
-          | WorkflowParameterYAML
-          | BitwardenLoginCredentialParameterYAML
-          | ContextParameterYAML
-          | BitwardenSensitiveInformationParameterYAML
-          | BitwardenCreditCardDataParameterYAML
-          | OnePasswordCredentialParameterYAML
-          | CredentialParameterYAML
-          | undefined,
-      ): param is
-        | WorkflowParameterYAML
-        | BitwardenLoginCredentialParameterYAML
-        | ContextParameterYAML
-        | BitwardenSensitiveInformationParameterYAML
-        | BitwardenCreditCardDataParameterYAML
-        | OnePasswordCredentialParameterYAML
-        | CredentialParameterYAML => param !== undefined,
+        param: WorkflowParameterYAML | ContextParameterYAML | CredentialParameterYAML | undefined,
+      ): param is WorkflowParameterYAML | ContextParameterYAML | CredentialParameterYAML =>
+        param !== undefined,
     );
 }
 

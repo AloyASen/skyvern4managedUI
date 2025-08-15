@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
-import CloudContext from "@/store/CloudContext";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { useContext, useState } from "react";
 import { CredentialParameterSourceSelector } from "../../components/CredentialParameterSourceSelector";
@@ -50,12 +49,7 @@ function header(type: WorkflowEditorParameterType) {
   if (type === "credential") {
     return "Edit Credential Parameter";
   }
-  if (type === "secret") {
-    return "Edit Secret Parameter";
-  }
-  if (type === "creditCardData") {
-    return "Edit Credit Card Parameter";
-  }
+  // External providers removed
   return "Edit Context Parameter";
 }
 
@@ -65,7 +59,6 @@ function WorkflowParameterEditPanel({
   onSave,
   initialValues,
 }: Props) {
-  const isCloud = useContext(CloudContext);
   const [key, setKey] = useState(initialValues.key);
   const isSkyvernCredential =
     initialValues.parameterType === "credential" &&
@@ -106,25 +99,7 @@ function WorkflowParameterEditPanel({
       : undefined,
   );
 
-  const [identityKey, setIdentityKey] = useState(
-    initialValues.parameterType === "secret" ? initialValues.identityKey : "",
-  );
-
-  const [identityFields, setIdentityFields] = useState(
-    initialValues.parameterType === "secret"
-      ? initialValues.identityFields.join(", ")
-      : "",
-  );
-
-  const [collectionId, setCollectionId] = useState(
-    initialValues.parameterType === "secret" ||
-      initialValues.parameterType === "creditCardData"
-      ? initialValues.collectionId ?? ""
-      : "",
-  );
-  const [itemId, setItemId] = useState(
-    initialValues.parameterType === "creditCardData" ? initialValues.itemId : "",
-  );
+  // External provider fields removed
 
   return (
     <ScrollArea>
@@ -249,65 +224,8 @@ function WorkflowParameterEditPanel({
               />
             </div>
           )}
-          {type === "secret" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Identity Key</Label>
-                <Input
-                  value={identityKey}
-                  onChange={(e) => setIdentityKey(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">
-                  Identity Fields
-                </Label>
-                <Input
-                  value={identityFields}
-                  onChange={(e) => setIdentityFields(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={collectionId}
-                  onChange={(e) => setCollectionId(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-          {type === "creditCardData" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={collectionId}
-                  onChange={(e) => setCollectionId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-          {
-            // temporarily cloud only
-            type === "credential" &&
-              credentialType === "skyvern" &&
-              isCloud && (
-                <div className="space-y-1">
-                  <Label className="text-xs text-slate-300">Credential</Label>
-                  <CredentialParameterSourceSelector
-                    value={credentialId}
-                    onChange={(value) => setCredentialId(value)}
-                  />
-                </div>
-              )
-          }
+          {/* External provider sections removed */}
+          {/* Only Skyvern credential selector is supported */}
           <div className="flex justify-end">
             <Button
               onClick={() => {
@@ -367,38 +285,7 @@ function WorkflowParameterEditPanel({
                     description,
                   });
                 }
-                if (type === "secret" || type === "creditCardData") {
-                  if (!collectionId) {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to save parameter",
-                      description: "Collection ID is required",
-                    });
-                    return;
-                  }
-                }
-                if (type === "secret") {
-                  onSave({
-                    key,
-                    parameterType: "secret",
-                    collectionId,
-                    identityFields: identityFields
-                      .split(",")
-                      .filter((s) => s.length > 0)
-                      .map((field) => field.trim()),
-                    identityKey,
-                    description,
-                  });
-                }
-                if (type === "creditCardData") {
-                  onSave({
-                    key,
-                    parameterType: "creditCardData",
-                    collectionId,
-                    itemId,
-                    description,
-                  });
-                }
+                // External providers removed; only Skyvern credential, workflow, and context parameters are supported
                 if (type === "context") {
                   if (!sourceParameterKey) {
                     toast({
@@ -415,7 +302,7 @@ function WorkflowParameterEditPanel({
                     description,
                   });
                 }
-                if (type === "credential" && credentialType === "skyvern") {
+                if (type === "credential") {
                   if (!credentialId) {
                     toast({
                       variant: "destructive",

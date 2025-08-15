@@ -38,57 +38,12 @@ const getInitialParameters = (workflow: WorkflowApiResponse) => {
           description: parameter.description,
         };
       } else if (
-        parameter.parameter_type ===
-        WorkflowParameterTypes.Bitwarden_Sensitive_Information
-      ) {
-        return {
-          key: parameter.key,
-          parameterType: WorkflowEditorParameterTypes.Secret,
-          collectionId: parameter.bitwarden_collection_id,
-          identityKey: parameter.bitwarden_identity_key,
-          identityFields: parameter.bitwarden_identity_fields,
-          description: parameter.description,
-        };
-      } else if (
-        parameter.parameter_type ===
-        WorkflowParameterTypes.Bitwarden_Credit_Card_Data
-      ) {
-        return {
-          key: parameter.key,
-          parameterType: WorkflowEditorParameterTypes.CreditCardData,
-          collectionId: parameter.bitwarden_collection_id,
-          itemId: parameter.bitwarden_item_id,
-          description: parameter.description,
-        };
-      } else if (
         parameter.parameter_type === WorkflowParameterTypes.Credential
       ) {
         return {
           key: parameter.key,
           parameterType: WorkflowEditorParameterTypes.Credential,
           credentialId: parameter.credential_id,
-          description: parameter.description,
-        };
-      } else if (
-        parameter.parameter_type === WorkflowParameterTypes.OnePassword
-      ) {
-        return {
-          key: parameter.key,
-          parameterType: WorkflowEditorParameterTypes.OnePassword,
-          vaultId: parameter.vault_id,
-          itemId: parameter.item_id,
-          description: parameter.description,
-        };
-      } else if (
-        parameter.parameter_type ===
-        WorkflowParameterTypes.Bitwarden_Login_Credential
-      ) {
-        return {
-          key: parameter.key,
-          parameterType: WorkflowEditorParameterTypes.Credential,
-          collectionId: parameter.bitwarden_collection_id,
-          itemId: parameter.bitwarden_item_id,
-          urlParameterKey: parameter.url_parameter_key,
           description: parameter.description,
         };
       }
