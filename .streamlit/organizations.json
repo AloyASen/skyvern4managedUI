@@ -101,11 +101,47 @@
         "partnerName": "Radii-Lab",
         "days_left": 25
       }
+    },
+    "o_427382249757272582": {
+      "license_key": "59d13386-8121-4872-933d-e5e09ea7e28e",
+      "machine_id": "unknown-machine",
+      "profile": {
+        "valid": "True",
+        "user": {
+          "email": "adysenlab@gmail.com",
+          "name": "A"
+        },
+        "licenseType": "prepaid",
+        "market": "Forex",
+        "plan": "trial",
+        "franchiseName": "Radii-Lab",
+        "partnerName": "Radii-Lab",
+        "days_left": 28
+      }
+    },
+    "o_427654452659847748": {
+      "license_key": "0d8f133d-1fd1-46e5-a81b-38f43a89223c",
+      "machine_id": "unknown-machine",
+      "profile": {
+        "valid": "True",
+        "user": {
+          "email": "adysenlab@gmail.com",
+          "name": "A"
+        },
+        "licenseType": "prepaid",
+        "market": "Forex",
+        "plan": "trial",
+        "franchiseName": "Radii-Lab",
+        "partnerName": "Radii-Lab",
+        "days_left": 28
+      }
     }
   },
   "license_to_org": {
     "ac43b8fb-55c2-44e2-a7f7-ec81884cb453": "o_426132992880178628",
     "a1cbd18b-480e-4cbd-bb9d-117fe7c486ab": "o_426117745746277750",
-    "3de95b39-8b5a-4944-befa-2ffaaec503d3": "o_426133057304688070"
+    "3de95b39-8b5a-4944-befa-2ffaaec503d3": "o_426133057304688070",
+    "59d13386-8121-4872-933d-e5e09ea7e28e": "o_427382249757272582",
+    "0d8f133d-1fd1-46e5-a81b-38f43a89223c": "o_427654452659847748"
   }
 }
