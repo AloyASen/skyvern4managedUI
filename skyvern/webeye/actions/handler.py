@@ -69,8 +69,7 @@ from skyvern.forge.sdk.core.skyvern_context import ensure_context
 from skyvern.forge.sdk.db.enums import OrganizationAuthTokenType
 from skyvern.forge.sdk.models import Step
 from skyvern.forge.sdk.schemas.tasks import Task
-from skyvern.forge.sdk.services.bitwarden import BitwardenConstants
-from skyvern.forge.sdk.services.credentials import OnePasswordConstants
+TOTP_LABEL = "TOTP"
 from skyvern.forge.sdk.trace import TraceManager
 from skyvern.services.task_v1_service import is_cua_task
 from skyvern.utils.prompt_engine import CheckPhoneNumberFormatResponse, load_prompt_with_elements
@@ -899,7 +898,7 @@ async def handle_input_text_action(
     if text is None:
         return [ActionFailure(FailedToFetchSecret())]
 
-    is_totp_value = text == BitwardenConstants.TOTP or text == OnePasswordConstants.TOTP
+    is_totp_value = text == TOTP_LABEL
     is_secret_value = text != action.text
 
     # dynamically validate the attr, since it could change into enabled after the previous actions

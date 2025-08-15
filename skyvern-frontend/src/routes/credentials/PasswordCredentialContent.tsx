@@ -208,35 +208,9 @@ function PasswordCredentialContent({
                   </div>
                   <p className="text-sm text-slate-400">
                     You need to find the authenticator secret from the website
-                    where you are using the credential. Here are some guides
-                    from popular authenticator apps:{"  "}
-                    <Link
-                      to="https://bitwarden.com/help/integrated-authenticator/#manually-enter-a-secret"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2"
-                    >
-                      Bitwarden
-                    </Link>
-                    {", "}
-                    <Link
-                      to="https://support.1password.com/one-time-passwords#on-1passwordcom"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2"
-                    >
-                      1Password
-                    </Link>
-                    {", and "}
-                    <Link
-                      to="https://support.lastpass.com/s/document-item?language=en_US&bundleId=lastpass&topicId=LastPass/create-totp-vault.html&_LANG=enus"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline underline-offset-2"
-                    >
-                      LastPass
-                    </Link>
-                    {"."}
+                    where you are using the credential (often shown as
+                    “manual setup code” in your 2FA settings). See our
+                    documentation for guidance on using TOTP with workflows.
                   </p>
                 </div>
               )}

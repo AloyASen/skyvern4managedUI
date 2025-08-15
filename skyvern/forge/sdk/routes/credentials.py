@@ -22,7 +22,6 @@ from skyvern.forge.sdk.schemas.credentials import (
 from skyvern.forge.sdk.schemas.organizations import Organization
 from skyvern.forge.sdk.schemas.totp_codes import TOTPCode, TOTPCodeCreate
 from skyvern.forge.sdk.services import org_auth_service
-from skyvern.forge.sdk.services.bitwarden import BitwardenService
 
 LOG = structlog.get_logger()
 
@@ -131,38 +130,22 @@ async def create_credential(
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
 ) -> CredentialResponse:
-    org_collection = await app.DATABASE.get_organization_bitwarden_collection(current_org.organization_id)
-
-    if not org_collection:
-        LOG.info(
-            "There is no collection for the organization. Creating new collection.",
-            organization_id=current_org.organization_id,
-        )
-        collection_id = await BitwardenService.create_collection(
-            name=current_org.organization_id,
-        )
-        org_collection = await app.DATABASE.create_organization_bitwarden_collection(
-            current_org.organization_id,
-            collection_id,
-        )
-
-    item_id = await BitwardenService.create_credential_item(
-        collection_id=org_collection.collection_id,
-        name=data.name,
-        credential=data.credential,
-    )
-
+    # Create base credential row
     credential = await app.DATABASE.create_credential(
         organization_id=current_org.organization_id,
-        item_id=item_id,
         name=data.name,
         credential_type=data.credential_type,
     )
 
     if data.credential_type == CredentialType.PASSWORD:
-        credential_response = PasswordCredentialResponse(
+        # Persist password secret in Postgres
+        await app.DATABASE.create_password_secret(
+            credential_id=credential.credential_id,
             username=data.credential.username,
+            password=data.credential.password,
+            totp=data.credential.totp,
         )
+        credential_response = PasswordCredentialResponse(username=data.credential.username)
         return CredentialResponse(
             credential=credential_response,
             credential_id=credential.credential_id,
@@ -170,10 +153,17 @@ async def create_credential(
             name=data.name,
         )
     elif data.credential_type == CredentialType.CREDIT_CARD:
-        credential_response = CreditCardCredentialResponse(
-            last_four=data.credential.card_number[-4:],
-            brand=data.credential.card_brand,
+        # Persist credit card secret in Postgres
+        await app.DATABASE.create_credit_card_secret(
+            credential_id=credential.credential_id,
+            card_number=data.credential.card_number,
+            card_cvv=data.credential.card_cvv,
+            card_exp_month=data.credential.card_exp_month,
+            card_exp_year=data.credential.card_exp_year,
+            card_brand=data.credential.card_brand,
+            card_holder_name=data.credential.card_holder_name,
         )
+        credential_response = CreditCardCredentialResponse(last_four=data.credential.card_number[-4:], brand=data.credential.card_brand)
         return CredentialResponse(
             credential=credential_response,
             credential_id=credential.credential_id,
@@ -209,12 +199,6 @@ async def delete_credential(
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
 ) -> None:
-    organization_bitwarden_collection = await app.DATABASE.get_organization_bitwarden_collection(
-        current_org.organization_id
-    )
-    if not organization_bitwarden_collection:
-        raise HTTPException(status_code=404, detail="Credential account not found. It might have been deleted.")
-
     credential = await app.DATABASE.get_credential(
         credential_id=credential_id, organization_id=current_org.organization_id
     )
@@ -222,7 +206,6 @@ async def delete_credential(
         raise HTTPException(status_code=404, detail=f"Credential not found, credential_id={credential_id}")
 
     await app.DATABASE.delete_credential(credential.credential_id, current_org.organization_id)
-    await BitwardenService.delete_credential_item(credential.item_id)
 
     return None
 
@@ -254,42 +237,33 @@ async def get_credential(
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
 ) -> CredentialResponse:
-    organization_bitwarden_collection = await app.DATABASE.get_organization_bitwarden_collection(
-        current_org.organization_id
-    )
-    if not organization_bitwarden_collection:
-        raise HTTPException(status_code=404, detail="Credential account not found. It might have been deleted.")
-
     credential = await app.DATABASE.get_credential(
         credential_id=credential_id, organization_id=current_org.organization_id
     )
     if not credential:
         raise HTTPException(status_code=404, detail="Credential not found")
 
-    credential_item = await BitwardenService.get_credential_item(credential.item_id)
-    if not credential_item:
-        raise HTTPException(status_code=404, detail="Credential not found")
-
-    if credential_item.credential_type == CredentialType.PASSWORD:
-        credential_response = PasswordCredentialResponse(
-            username=credential_item.credential.username,
-        )
+    if credential.credential_type == CredentialType.PASSWORD:
+        secret = await app.DATABASE.get_password_secret(credential.credential_id)
+        if not secret:
+            raise HTTPException(status_code=404, detail="Credential not found")
+        credential_response = PasswordCredentialResponse(username=secret.username)
         return CredentialResponse(
             credential=credential_response,
             credential_id=credential.credential_id,
-            credential_type=credential_item.credential_type,
-            name=credential_item.name,
+            credential_type=credential.credential_type,
+            name=credential.name,
         )
-    if credential_item.credential_type == CredentialType.CREDIT_CARD:
-        credential_response = CreditCardCredentialResponse(
-            last_four=credential_item.credential.card_number[-4:],
-            brand=credential_item.credential.card_brand,
-        )
+    if credential.credential_type == CredentialType.CREDIT_CARD:
+        secret = await app.DATABASE.get_credit_card_secret(credential.credential_id)
+        if not secret:
+            raise HTTPException(status_code=404, detail="Credential not found")
+        credential_response = CreditCardCredentialResponse(last_four=secret.card_number[-4:], brand=secret.card_brand)
         return CredentialResponse(
             credential=credential_response,
             credential_id=credential.credential_id,
-            credential_type=credential_item.credential_type,
-            name=credential_item.name,
+            credential_type=credential.credential_type,
+            name=credential.name,
         )
     raise HTTPException(status_code=400, detail="Invalid credential type")
 
@@ -329,41 +303,31 @@ async def get_credentials(
         openapi_extra={"x-fern-sdk-parameter-name": "page_size"},
     ),
 ) -> list[CredentialResponse]:
-    organization_bitwarden_collection = await app.DATABASE.get_organization_bitwarden_collection(
-        current_org.organization_id
-    )
-    if not organization_bitwarden_collection:
-        return []
-
     credentials = await app.DATABASE.get_credentials(current_org.organization_id, page=page, page_size=page_size)
-    items = await BitwardenService.get_collection_items(organization_bitwarden_collection.collection_id)
-
-    response_items = []
-    for credential in credentials:
-        item = next((item for item in items if item.item_id == credential.item_id), None)
-        if not item:
-            continue
-        if item.credential_type == CredentialType.PASSWORD:
-            credential_response = PasswordCredentialResponse(username=item.credential.username)
+    response_items: list[CredentialResponse] = []
+    for cred in credentials:
+        if cred.credential_type == CredentialType.PASSWORD:
+            secret = await app.DATABASE.get_password_secret(cred.credential_id)
+            if not secret:
+                continue
             response_items.append(
                 CredentialResponse(
-                    credential=credential_response,
-                    credential_id=credential.credential_id,
-                    credential_type=item.credential_type,
-                    name=item.name,
+                    credential=PasswordCredentialResponse(username=secret.username),
+                    credential_id=cred.credential_id,
+                    credential_type=cred.credential_type,
+                    name=cred.name,
                 )
             )
-        elif item.credential_type == CredentialType.CREDIT_CARD:
-            credential_response = CreditCardCredentialResponse(
-                last_four=item.credential.card_number[-4:],
-                brand=item.credential.card_brand,
-            )
+        elif cred.credential_type == CredentialType.CREDIT_CARD:
+            secret = await app.DATABASE.get_credit_card_secret(cred.credential_id)
+            if not secret:
+                continue
             response_items.append(
                 CredentialResponse(
-                    credential=credential_response,
-                    credential_id=credential.credential_id,
-                    credential_type=item.credential_type,
-                    name=item.name,
+                    credential=CreditCardCredentialResponse(last_four=secret.card_number[-4:], brand=secret.card_brand),
+                    credential_id=cred.credential_id,
+                    credential_type=cred.credential_type,
+                    name=cred.name,
                 )
             )
     return response_items

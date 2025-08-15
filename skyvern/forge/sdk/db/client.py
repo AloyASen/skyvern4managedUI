@@ -25,6 +25,8 @@ from skyvern.forge.sdk.db.models import (
     DebugSessionModel,
     OnePasswordCredentialParameterModel,
     OrganizationAuthTokenModel,
+    CredentialPasswordModel,
+    CredentialCreditCardModel,
     OrganizationLicenseModel,
     OrganizationMachineModel,
     OrganizationProfileModel,
@@ -75,7 +77,12 @@ from skyvern.forge.sdk.db.utils import (
 from skyvern.forge.sdk.log_artifacts import save_workflow_run_logs
 from skyvern.forge.sdk.models import Step, StepStatus
 from skyvern.forge.sdk.schemas.ai_suggestions import AISuggestion
-from skyvern.forge.sdk.schemas.credentials import Credential, CredentialType
+from skyvern.forge.sdk.schemas.credentials import (
+    Credential,
+    CredentialType,
+    PasswordCredential,
+    CreditCardCredential,
+)
 from skyvern.forge.sdk.schemas.debug_sessions import DebugSession
 from skyvern.forge.sdk.schemas.organization_bitwarden_collections import OrganizationBitwardenCollection
 from skyvern.forge.sdk.schemas.organizations import Organization, OrganizationAuthToken
@@ -3430,19 +3437,66 @@ class AgentDB:
         name: str,
         credential_type: CredentialType,
         organization_id: str,
-        item_id: str,
     ) -> Credential:
         async with self.Session() as session:
             credential = CredentialModel(
                 organization_id=organization_id,
                 name=name,
                 credential_type=credential_type,
-                item_id=item_id,
+                item_id=None,
             )
             session.add(credential)
             await session.commit()
             await session.refresh(credential)
             return Credential.model_validate(credential)
+
+    async def create_password_secret(
+        self,
+        *,
+        credential_id: str,
+        username: str,
+        password: str,
+        totp: str | None,
+    ) -> None:
+        from skyvern.forge.sdk.utils.crypto import encrypt_str
+
+        async with self.Session() as session:
+            session.add(
+                CredentialPasswordModel(
+                    credential_id=credential_id,
+                    username=encrypt_str(username),
+                    password=encrypt_str(password),
+                    totp=encrypt_str(totp) if totp else None,
+                )
+            )
+            await session.commit()
+
+    async def create_credit_card_secret(
+        self,
+        *,
+        credential_id: str,
+        card_number: str,
+        card_cvv: str,
+        card_exp_month: str,
+        card_exp_year: str,
+        card_brand: str,
+        card_holder_name: str,
+    ) -> None:
+        from skyvern.forge.sdk.utils.crypto import encrypt_str
+
+        async with self.Session() as session:
+            session.add(
+                CredentialCreditCardModel(
+                    credential_id=credential_id,
+                    card_number=encrypt_str(card_number),
+                    card_cvv=encrypt_str(card_cvv),
+                    card_exp_month=encrypt_str(card_exp_month),
+                    card_exp_year=encrypt_str(card_exp_year),
+                    card_brand=encrypt_str(card_brand),
+                    card_holder_name=encrypt_str(card_holder_name),
+                )
+            )
+            await session.commit()
 
     async def get_credential(self, credential_id: str, organization_id: str) -> Credential:
         async with self.Session() as session:
@@ -3457,6 +3511,35 @@ class AgentDB:
             if credential:
                 return Credential.model_validate(credential)
             raise NotFoundError(f"Credential {credential_id} not found")
+
+    async def get_password_secret(self, credential_id: str) -> PasswordCredential | None:
+        from skyvern.forge.sdk.utils.crypto import decrypt_str
+
+        async with self.Session() as session:
+            row = await session.get(CredentialPasswordModel, credential_id)
+            if not row:
+                return None
+            return PasswordCredential(
+                username=decrypt_str(row.username),
+                password=decrypt_str(row.password),
+                totp=decrypt_str(row.totp) if row.totp else None,
+            )
+
+    async def get_credit_card_secret(self, credential_id: str) -> CreditCardCredential | None:
+        from skyvern.forge.sdk.utils.crypto import decrypt_str
+
+        async with self.Session() as session:
+            row = await session.get(CredentialCreditCardModel, credential_id)
+            if not row:
+                return None
+            return CreditCardCredential(
+                card_number=decrypt_str(row.card_number),
+                card_cvv=decrypt_str(row.card_cvv),
+                card_exp_month=decrypt_str(row.card_exp_month),
+                card_exp_year=decrypt_str(row.card_exp_year),
+                card_brand=decrypt_str(row.card_brand),
+                card_holder_name=decrypt_str(row.card_holder_name),
+            )
 
     async def get_credentials(self, organization_id: str, page: int = 1, page_size: int = 10) -> list[Credential]:
         async with self.Session() as session:
@@ -3505,37 +3588,18 @@ class AgentDB:
             if not credential:
                 raise NotFoundError(f"Credential {credential_id} not found")
             credential.deleted_at = datetime.utcnow()
+            # Clean up secret tables if exist
+            await session.execute(
+                delete(CredentialPasswordModel).where(CredentialPasswordModel.credential_id == credential_id)
+            )
+            await session.execute(
+                delete(CredentialCreditCardModel).where(CredentialCreditCardModel.credential_id == credential_id)
+            )
             await session.commit()
             await session.refresh(credential)
             return None
 
-    async def create_organization_bitwarden_collection(
-        self,
-        organization_id: str,
-        collection_id: str,
-    ) -> OrganizationBitwardenCollection:
-        async with self.Session() as session:
-            organization_bitwarden_collection = OrganizationBitwardenCollectionModel(
-                organization_id=organization_id, collection_id=collection_id
-            )
-            session.add(organization_bitwarden_collection)
-            await session.commit()
-            await session.refresh(organization_bitwarden_collection)
-            return OrganizationBitwardenCollection.model_validate(organization_bitwarden_collection)
-
-    async def get_organization_bitwarden_collection(
-        self,
-        organization_id: str,
-    ) -> OrganizationBitwardenCollection | None:
-        async with self.Session() as session:
-            organization_bitwarden_collection = (
-                await session.scalars(
-                    select(OrganizationBitwardenCollectionModel).filter_by(organization_id=organization_id)
-                )
-            ).first()
-            if organization_bitwarden_collection:
-                return OrganizationBitwardenCollection.model_validate(organization_bitwarden_collection)
-            return None
+    # Bitwarden/1Password integrations removed; credentials are stored in Postgres
 
     async def cache_task_run(self, run_id: str, organization_id: str | None = None) -> Run:
         async with self.Session() as session:

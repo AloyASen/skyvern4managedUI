@@ -3,32 +3,23 @@ import uuid
 from typing import TYPE_CHECKING, Any, Self
 
 import structlog
-from onepassword.client import Client as OnePasswordClient
 
 from skyvern.config import settings
 from skyvern.exceptions import (
-    BitwardenBaseError,
     CredentialParameterNotFoundError,
-    SkyvernException,
     WorkflowRunContextNotInitialized,
 )
 from skyvern.forge import app
 from skyvern.forge.sdk.api.aws import AsyncAWSClient
-from skyvern.forge.sdk.schemas.credentials import PasswordCredential
+from skyvern.forge.sdk.schemas.credentials import PasswordCredential, CredentialType
 from skyvern.forge.sdk.schemas.organizations import Organization
 from skyvern.forge.sdk.schemas.tasks import TaskStatus
-from skyvern.forge.sdk.services.bitwarden import BitwardenConstants, BitwardenService
-from skyvern.forge.sdk.services.credentials import OnePasswordConstants
 from skyvern.forge.sdk.workflow.exceptions import OutputParameterKeyCollisionError
 from skyvern.forge.sdk.workflow.models.parameter import (
     PARAMETER_TYPE,
     AWSSecretParameter,
-    BitwardenCreditCardDataParameter,
-    BitwardenLoginCredentialParameter,
-    BitwardenSensitiveInformationParameter,
     ContextParameter,
     CredentialParameter,
-    OnePasswordCredentialParameter,
     OutputParameter,
     Parameter,
     ParameterType,
@@ -42,6 +33,7 @@ if TYPE_CHECKING:
 LOG = structlog.get_logger()
 
 BlockMetadata = dict[str, str | int | float | bool | dict | list]
+TOTP_LABEL = "TOTP"
 
 
 class WorkflowRunContext:
@@ -89,20 +81,6 @@ class WorkflowRunContext:
                 await workflow_run_context.register_aws_secret_parameter_value(secrete_parameter)
             elif isinstance(secrete_parameter, CredentialParameter):
                 await workflow_run_context.register_credential_parameter_value(secrete_parameter, organization)
-            elif isinstance(secrete_parameter, OnePasswordCredentialParameter):
-                await workflow_run_context.register_onepassword_credential_parameter_value(secrete_parameter)
-            elif isinstance(secrete_parameter, BitwardenLoginCredentialParameter):
-                await workflow_run_context.register_bitwarden_login_credential_parameter_value(
-                    secrete_parameter, organization
-                )
-            elif isinstance(secrete_parameter, BitwardenCreditCardDataParameter):
-                await workflow_run_context.register_bitwarden_credit_card_data_parameter_value(
-                    secrete_parameter, organization
-                )
-            elif isinstance(secrete_parameter, BitwardenSensitiveInformationParameter):
-                await workflow_run_context.register_bitwarden_sensitive_information_parameter_value(
-                    secrete_parameter, organization
-                )
 
         for context_parameter in context_parameters:
             # All context parameters will be registered with the context manager during initialization but the values
@@ -167,20 +145,7 @@ class WorkflowRunContext:
         return None
 
     async def get_secrets_from_password_manager(self) -> dict[str, Any]:
-        """
-        Get the secrets from the password manager. The secrets dict will contain the actual secret values.
-        """
-        secret_credentials = await BitwardenService.get_secret_value_from_url(
-            url=self.secrets[BitwardenConstants.URL],
-            client_secret=self.secrets[BitwardenConstants.CLIENT_SECRET],
-            client_id=self.secrets[BitwardenConstants.CLIENT_ID],
-            master_password=self.secrets[BitwardenConstants.MASTER_PASSWORD],
-            bw_organization_id=self.secrets[BitwardenConstants.BW_ORGANIZATION_ID],
-            bw_collection_ids=self.secrets[BitwardenConstants.BW_COLLECTION_IDS],
-            collection_id=self.secrets[BitwardenConstants.BW_COLLECTION_ID],
-            item_id=self.secrets[BitwardenConstants.BW_ITEM_ID],
-        )
-        return secret_credentials
+        raise NotImplementedError("External password managers have been removed")
 
     @staticmethod
     def generate_random_secret_id() -> str:
@@ -232,26 +197,46 @@ class WorkflowRunContext:
             if db_credential is None:
                 raise CredentialParameterNotFoundError(credential_id)
 
-            bitwarden_credential = await BitwardenService.get_credential_item(db_credential.item_id)
-
-            credential_item = bitwarden_credential.credential
-
             self.parameters[parameter.key] = parameter
             self.values[parameter.key] = {}
-            credential_dict = credential_item.model_dump()
-            for key, value in credential_dict.items():
-                random_secret_id = self.generate_random_secret_id()
-                secret_id = f"{random_secret_id}_{key}"
-                self.secrets[secret_id] = value
-                self.values[parameter.key][key] = secret_id
-
-            if isinstance(credential_item, PasswordCredential) and credential_item.totp is not None:
-                random_secret_id = self.generate_random_secret_id()
-                totp_secret_id = f"{random_secret_id}_totp"
-                self.secrets[totp_secret_id] = BitwardenConstants.TOTP
-                totp_secret_value = self.totp_secret_value_key(totp_secret_id)
-                self.secrets[totp_secret_value] = credential_item.totp
-                self.values[parameter.key]["totp"] = totp_secret_id
+            if db_credential.credential_type == CredentialType.PASSWORD:
+                secret = await app.DATABASE.get_password_secret(db_credential.credential_id)
+                if not secret:
+                    raise CredentialParameterNotFoundError(credential_id)
+                # username
+                sid_u = f"{self.generate_random_secret_id()}_username"
+                self.secrets[sid_u] = secret.username
+                self.values[parameter.key]["username"] = sid_u
+                # password
+                sid_p = f"{self.generate_random_secret_id()}_password"
+                self.secrets[sid_p] = secret.password
+                self.values[parameter.key]["password"] = sid_p
+                # totp
+                if secret.totp:
+                    totp_secret_id = f"{self.generate_random_secret_id()}_totp"
+                    self.secrets[totp_secret_id] = TOTP_LABEL
+                    totp_secret_value = self.totp_secret_value_key(totp_secret_id)
+                    self.secrets[totp_secret_value] = secret.totp
+                    self.values[parameter.key]["totp"] = totp_secret_id
+            elif db_credential.credential_type == CredentialType.CREDIT_CARD:
+                cc = await app.DATABASE.get_credit_card_secret(db_credential.credential_id)
+                if not cc:
+                    raise CredentialParameterNotFoundError(credential_id)
+                # map fields
+                for key in [
+                    "card_number",
+                    "card_cvv",
+                    "card_exp_month",
+                    "card_exp_year",
+                    "card_brand",
+                    "card_holder_name",
+                ]:
+                    val = getattr(cc, key)
+                    sid = f"{self.generate_random_secret_id()}_{key}"
+                    self.secrets[sid] = val
+                    self.values[parameter.key][key] = sid
+            else:
+                raise CredentialParameterNotFoundError(credential_id)
         except Exception as e:
             LOG.error(f"Failed to get credential from database: {credential_id}. Error: {e}")
             raise e
@@ -278,26 +263,42 @@ class WorkflowRunContext:
         if db_credential is None:
             raise CredentialParameterNotFoundError(credential_id)
 
-        bitwarden_credential = await BitwardenService.get_credential_item(db_credential.item_id)
-
-        credential_item = bitwarden_credential.credential
-
         self.parameters[parameter.key] = parameter
         self.values[parameter.key] = {}
-        credential_dict = credential_item.model_dump()
-        for key, value in credential_dict.items():
-            random_secret_id = self.generate_random_secret_id()
-            secret_id = f"{random_secret_id}_{key}"
-            self.secrets[secret_id] = value
-            self.values[parameter.key][key] = secret_id
-
-        if isinstance(credential_item, PasswordCredential) and credential_item.totp is not None:
-            random_secret_id = self.generate_random_secret_id()
-            totp_secret_id = f"{random_secret_id}_totp"
-            self.secrets[totp_secret_id] = BitwardenConstants.TOTP
-            totp_secret_value = self.totp_secret_value_key(totp_secret_id)
-            self.secrets[totp_secret_value] = credential_item.totp
-            self.values[parameter.key]["totp"] = totp_secret_id
+        if db_credential.credential_type == CredentialType.PASSWORD:
+            secret = await app.DATABASE.get_password_secret(db_credential.credential_id)
+            if not secret:
+                raise CredentialParameterNotFoundError(credential_id)
+            sid_u = f"{self.generate_random_secret_id()}_username"
+            self.secrets[sid_u] = secret.username
+            self.values[parameter.key]["username"] = sid_u
+            sid_p = f"{self.generate_random_secret_id()}_password"
+            self.secrets[sid_p] = secret.password
+            self.values[parameter.key]["password"] = sid_p
+            if secret.totp:
+                totp_secret_id = f"{self.generate_random_secret_id()}_totp"
+                self.secrets[totp_secret_id] = TOTP_LABEL
+                totp_secret_value = self.totp_secret_value_key(totp_secret_id)
+                self.secrets[totp_secret_value] = secret.totp
+                self.values[parameter.key]["totp"] = totp_secret_id
+        elif db_credential.credential_type == CredentialType.CREDIT_CARD:
+            cc = await app.DATABASE.get_credit_card_secret(db_credential.credential_id)
+            if not cc:
+                raise CredentialParameterNotFoundError(credential_id)
+            for key in [
+                "card_number",
+                "card_cvv",
+                "card_exp_month",
+                "card_exp_year",
+                "card_brand",
+                "card_holder_name",
+            ]:
+                val = getattr(cc, key)
+                sid = f"{self.generate_random_secret_id()}_{key}"
+                self.secrets[sid] = val
+                self.values[parameter.key][key] = sid
+        else:
+            raise CredentialParameterNotFoundError(credential_id)
 
     async def register_aws_secret_parameter_value(
         self,
@@ -313,305 +314,17 @@ class WorkflowRunContext:
             self.values[parameter.key] = random_secret_id
             self.parameters[parameter.key] = parameter
 
-    async def register_onepassword_credential_parameter_value(self, parameter: OnePasswordCredentialParameter) -> None:
-        token = settings.OP_SERVICE_ACCOUNT_TOKEN
-        if not token:
-            raise ValueError("OP_SERVICE_ACCOUNT_TOKEN environment variable not set")
+    async def register_onepassword_credential_parameter_value(self, parameter: Any) -> None:
+        raise NotImplementedError("1Password integration has been removed")
 
-        client = await OnePasswordClient.authenticate(
-            auth=token,
-            integration_name="Skyvern",
-            integration_version="v1.0.0",
-        )
-        item_id = parameter.item_id
-        vault_id = parameter.vault_id
-        if self.has_parameter(parameter.item_id) and self.has_value(parameter.item_id):
-            item_id = self.values[parameter.item_id]
-        if self.has_parameter(parameter.vault_id) and self.has_value(parameter.vault_id):
-            vault_id = self.values[parameter.vault_id]
+    async def register_bitwarden_login_credential_parameter_value(self, parameter: Any, organization: Organization) -> None:
+        raise NotImplementedError("Bitwarden integration has been removed")
 
-        item = await client.items.get(vault_id, item_id)
+    async def register_bitwarden_sensitive_information_parameter_value(self, parameter: Any, organization: Organization) -> None:
+        raise NotImplementedError("Bitwarden integration has been removed")
 
-        # Check if item is None
-        if item is None:
-            LOG.error(f"No item found for vault_id:{parameter.vault_id}, item_id:{parameter.item_id}")
-            raise ValueError(f"1Password item not found: vault_id:{parameter.vault_id}, item_id:{parameter.item_id}")
-
-        self.parameters[parameter.key] = parameter
-        self.values[parameter.key] = {}
-
-        # Process all fields
-        for field in item.fields:
-            if field.value is None:
-                continue
-            random_secret_id = self.generate_random_secret_id()
-            field_type = field.field_type.value.lower()
-            if field_type == "totp":
-                totp_secret_id = f"{random_secret_id}_totp"
-                self.secrets[totp_secret_id] = OnePasswordConstants.TOTP
-                totp_secret_value = self.totp_secret_value_key(totp_secret_id)
-                self.secrets[totp_secret_value] = field.value
-                self.values[parameter.key]["totp"] = totp_secret_id
-            else:
-                # this will be the username or password or other field
-                key = field.id.replace(" ", "_")
-                secret_id = f"{random_secret_id}_{key}"
-                self.secrets[secret_id] = field.value
-                self.values[parameter.key][key] = secret_id
-
-    async def register_bitwarden_login_credential_parameter_value(
-        self,
-        parameter: BitwardenLoginCredentialParameter,
-        organization: Organization,
-    ) -> None:
-        try:
-            # Get the Bitwarden login credentials from AWS secrets
-            client_id = settings.BITWARDEN_CLIENT_ID or await self._aws_client.get_secret(
-                parameter.bitwarden_client_id_aws_secret_key
-            )
-            client_secret = settings.BITWARDEN_CLIENT_SECRET or await self._aws_client.get_secret(
-                parameter.bitwarden_client_secret_aws_secret_key
-            )
-            master_password = settings.BITWARDEN_MASTER_PASSWORD or await self._aws_client.get_secret(
-                parameter.bitwarden_master_password_aws_secret_key
-            )
-        except Exception as e:
-            LOG.error(f"Failed to get Bitwarden login credentials from AWS secrets. Error: {e}")
-            raise e
-
-        if not client_id:
-            raise ValueError("Bitwarden client ID not found")
-        if not client_secret:
-            raise ValueError("Bitwarden client secret not found")
-        if not master_password:
-            raise ValueError("Bitwarden master password not found")
-
-        if (
-            parameter.url_parameter_key
-            and self.has_parameter(parameter.url_parameter_key)
-            and self.has_value(parameter.url_parameter_key)
-        ):
-            url = self.values[parameter.url_parameter_key]
-        elif parameter.url_parameter_key:
-            # If a key can't be found within the parameter values dict, assume it's a URL (and not a URL Parameter)
-            url = parameter.url_parameter_key
-        elif parameter.bitwarden_item_id:
-            url = None
-        else:
-            LOG.error(f"URL parameter {parameter.url_parameter_key} not found or has no value")
-            raise SkyvernException("URL parameter for Bitwarden login credentials not found or has no value")
-
-        collection_id = None
-        if parameter.bitwarden_collection_id:
-            if self.has_parameter(parameter.bitwarden_collection_id) and self.has_value(
-                parameter.bitwarden_collection_id
-            ):
-                collection_id = self.values[parameter.bitwarden_collection_id]
-            else:
-                collection_id = parameter.bitwarden_collection_id
-
-        item_id = None
-        if parameter.bitwarden_item_id:
-            if self.has_parameter(parameter.bitwarden_item_id) and self.has_value(parameter.bitwarden_item_id):
-                item_id = self.values[parameter.bitwarden_item_id]
-            else:
-                item_id = parameter.bitwarden_item_id
-
-        try:
-            secret_credentials = await BitwardenService.get_secret_value_from_url(
-                client_id,
-                client_secret,
-                master_password,
-                organization.bw_organization_id,
-                organization.bw_collection_ids,
-                url,
-                collection_id=collection_id,
-                item_id=item_id,
-            )
-            if secret_credentials:
-                self.secrets[BitwardenConstants.BW_ORGANIZATION_ID] = organization.bw_organization_id
-                self.secrets[BitwardenConstants.BW_COLLECTION_IDS] = organization.bw_collection_ids
-                self.secrets[BitwardenConstants.URL] = url
-                self.secrets[BitwardenConstants.CLIENT_SECRET] = client_secret
-                self.secrets[BitwardenConstants.CLIENT_ID] = client_id
-                self.secrets[BitwardenConstants.MASTER_PASSWORD] = master_password
-                self.secrets[BitwardenConstants.BW_COLLECTION_ID] = parameter.bitwarden_collection_id
-                self.secrets[BitwardenConstants.BW_ITEM_ID] = item_id
-
-                random_secret_id = self.generate_random_secret_id()
-                # username secret
-                username_secret_id = f"{random_secret_id}_username"
-                self.secrets[username_secret_id] = secret_credentials[BitwardenConstants.USERNAME]
-                # password secret
-                password_secret_id = f"{random_secret_id}_password"
-                self.secrets[password_secret_id] = secret_credentials[BitwardenConstants.PASSWORD]
-                self.values[parameter.key] = {
-                    "username": username_secret_id,
-                    "password": password_secret_id,
-                }
-                self.parameters[parameter.key] = parameter
-
-                if BitwardenConstants.TOTP in secret_credentials and secret_credentials[BitwardenConstants.TOTP]:
-                    totp_secret_id = f"{random_secret_id}_totp"
-                    self.secrets[totp_secret_id] = BitwardenConstants.TOTP
-                    totp_secret_value = self.totp_secret_value_key(totp_secret_id)
-                    self.secrets[totp_secret_value] = secret_credentials[BitwardenConstants.TOTP]
-                    self.values[parameter.key]["totp"] = totp_secret_id
-
-        except BitwardenBaseError as e:
-            LOG.error(f"Failed to get secret from Bitwarden. Error: {e}")
-            raise e
-
-    async def register_bitwarden_sensitive_information_parameter_value(
-        self,
-        parameter: BitwardenSensitiveInformationParameter,
-        organization: Organization,
-    ) -> None:
-        try:
-            # Get the Bitwarden login credentials from AWS secrets
-            client_id = settings.BITWARDEN_CLIENT_ID or await self._aws_client.get_secret(
-                parameter.bitwarden_client_id_aws_secret_key
-            )
-            client_secret = settings.BITWARDEN_CLIENT_SECRET or await self._aws_client.get_secret(
-                parameter.bitwarden_client_secret_aws_secret_key
-            )
-            master_password = settings.BITWARDEN_MASTER_PASSWORD or await self._aws_client.get_secret(
-                parameter.bitwarden_master_password_aws_secret_key
-            )
-        except Exception as e:
-            LOG.error(f"Failed to get Bitwarden login credentials from AWS secrets. Error: {e}")
-            raise e
-
-        if not client_id:
-            raise ValueError("Bitwarden client ID not found")
-        if not client_secret:
-            raise ValueError("Bitwarden client secret not found")
-        if not master_password:
-            raise ValueError("Bitwarden master password not found")
-
-        bitwarden_identity_key = parameter.bitwarden_identity_key
-        if self.has_parameter(parameter.bitwarden_identity_key) and self.has_value(parameter.bitwarden_identity_key):
-            bitwarden_identity_key = self.values[parameter.bitwarden_identity_key]
-
-        collection_id = parameter.bitwarden_collection_id
-        if self.has_parameter(parameter.bitwarden_collection_id) and self.has_value(parameter.bitwarden_collection_id):
-            collection_id = self.values[parameter.bitwarden_collection_id]
-
-        try:
-            sensitive_values = await BitwardenService.get_sensitive_information_from_identity(
-                client_id,
-                client_secret,
-                master_password,
-                organization.bw_organization_id,
-                organization.bw_collection_ids,
-                collection_id,
-                bitwarden_identity_key,
-                parameter.bitwarden_identity_fields,
-            )
-            if sensitive_values:
-                self.secrets[BitwardenConstants.BW_ORGANIZATION_ID] = organization.bw_organization_id
-                self.secrets[BitwardenConstants.BW_COLLECTION_IDS] = organization.bw_collection_ids
-                self.secrets[BitwardenConstants.IDENTITY_KEY] = bitwarden_identity_key
-                self.secrets[BitwardenConstants.CLIENT_SECRET] = client_secret
-                self.secrets[BitwardenConstants.CLIENT_ID] = client_id
-                self.secrets[BitwardenConstants.MASTER_PASSWORD] = master_password
-                self.secrets[BitwardenConstants.BW_COLLECTION_ID] = collection_id
-
-                self.parameters[parameter.key] = parameter
-                self.values[parameter.key] = {}
-                for key, value in sensitive_values.items():
-                    random_secret_id = self.generate_random_secret_id()
-                    secret_id = f"{random_secret_id}_{key}"
-                    self.secrets[secret_id] = value
-                    self.values[parameter.key][key] = secret_id
-
-        except BitwardenBaseError as e:
-            LOG.error(f"Failed to get sensitive information from Bitwarden. Error: {e}")
-            raise e
-
-    async def register_bitwarden_credit_card_data_parameter_value(
-        self,
-        parameter: BitwardenCreditCardDataParameter,
-        organization: Organization,
-    ) -> None:
-        try:
-            # Get the Bitwarden login credentials from AWS secrets
-            client_id = settings.BITWARDEN_CLIENT_ID or await self._aws_client.get_secret(
-                parameter.bitwarden_client_id_aws_secret_key
-            )
-            client_secret = settings.BITWARDEN_CLIENT_SECRET or await self._aws_client.get_secret(
-                parameter.bitwarden_client_secret_aws_secret_key
-            )
-            master_password = settings.BITWARDEN_MASTER_PASSWORD or await self._aws_client.get_secret(
-                parameter.bitwarden_master_password_aws_secret_key
-            )
-        except Exception as e:
-            LOG.error(f"Failed to get Bitwarden login credentials from AWS secrets. Error: {e}")
-            raise e
-
-        if not client_id:
-            raise ValueError("Bitwarden client ID not found")
-        if not client_secret:
-            raise ValueError("Bitwarden client secret not found")
-        if not master_password:
-            raise ValueError("Bitwarden master password not found")
-
-        if self.has_parameter(parameter.bitwarden_item_id) and self.has_value(parameter.bitwarden_item_id):
-            item_id = self.values[parameter.bitwarden_item_id]
-        else:
-            item_id = parameter.bitwarden_item_id
-
-        if self.has_parameter(parameter.bitwarden_collection_id) and self.has_value(parameter.bitwarden_collection_id):
-            collection_id = self.values[parameter.bitwarden_collection_id]
-        else:
-            collection_id = parameter.bitwarden_collection_id
-
-        try:
-            credit_card_data = await BitwardenService.get_credit_card_data(
-                client_id,
-                client_secret,
-                master_password,
-                organization.bw_organization_id,
-                organization.bw_collection_ids,
-                collection_id,
-                item_id,
-            )
-            if not credit_card_data:
-                raise ValueError("Credit card data not found in Bitwarden")
-
-            self.secrets[BitwardenConstants.CLIENT_ID] = client_id
-            self.secrets[BitwardenConstants.CLIENT_SECRET] = client_secret
-            self.secrets[BitwardenConstants.MASTER_PASSWORD] = master_password
-            self.secrets[BitwardenConstants.BW_ITEM_ID] = item_id
-
-            fields_to_obfuscate = {
-                BitwardenConstants.CREDIT_CARD_NUMBER: "card_number",
-                BitwardenConstants.CREDIT_CARD_CVV: "card_cvv",
-            }
-
-            pass_through_fields = {
-                BitwardenConstants.CREDIT_CARD_HOLDER_NAME: "card_holder_name",
-                BitwardenConstants.CREDIT_CARD_EXPIRATION_MONTH: "card_exp_month",
-                BitwardenConstants.CREDIT_CARD_EXPIRATION_YEAR: "card_exp_year",
-                BitwardenConstants.CREDIT_CARD_BRAND: "card_brand",
-            }
-
-            parameter_value: dict[str, Any] = {
-                field_name: credit_card_data[field_key] for field_key, field_name in pass_through_fields.items()
-            }
-
-            for data_key, secret_suffix in fields_to_obfuscate.items():
-                random_secret_id = self.generate_random_secret_id()
-                secret_id = f"{random_secret_id}_{secret_suffix}"
-                self.secrets[secret_id] = credit_card_data[data_key]
-                parameter_value[secret_suffix] = secret_id
-
-            self.values[parameter.key] = parameter_value
-            self.parameters[parameter.key] = parameter
-
-        except BitwardenBaseError as e:
-            LOG.error(f"Failed to get credit card data from Bitwarden. Error: {e}")
-            raise e
+    async def register_bitwarden_credit_card_data_parameter_value(self, parameter: Any, organization: Organization) -> None:
+        raise NotImplementedError("Bitwarden integration has been removed")
 
     async def register_parameter_value(
         self,

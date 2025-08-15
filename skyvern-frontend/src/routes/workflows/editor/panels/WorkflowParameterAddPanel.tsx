@@ -1,4 +1,3 @@
-import { SwitchBar } from "@/components/SwitchBar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,7 @@ import {
 import { WorkflowParameterInput } from "../../WorkflowParameterInput";
 import { ParametersState } from "../types";
 import { getDefaultValueForParameterType } from "../workflowEditorUtils";
-import { validateBitwardenLoginCredential } from "./util";
+// Removed external providers; only Skyvern credentials are supported
 
 type Props = {
   type: WorkflowEditorParameterType;
@@ -62,11 +61,7 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
   const reservedKeys = ["current_item", "current_value", "current_index"];
   const isCloud = useContext(CloudContext);
   const [key, setKey] = useState("");
-  const [urlParameterKey, setUrlParameterKey] = useState("");
   const [description, setDescription] = useState("");
-  const [bitwardenCollectionId, setBitwardenCollectionId] = useState("");
-  const [bitwardenLoginCredentialItemId, setBitwardenLoginCredentialItemId] =
-    useState("");
   const [parameterType, setParameterType] =
     useState<WorkflowParameterValueType>("string");
   const [defaultValueState, setDefaultValueState] = useState<{
@@ -80,18 +75,14 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
     string | undefined
   >(undefined);
 
-  const [credentialType, setCredentialType] = useState<
-    "bitwarden" | "skyvern" | "onepassword"
-  >("skyvern");
-  const [vaultId, setVaultId] = useState("");
-  const [itemId, setItemId] = useState("");
+  const [credentialId, setCredentialId] = useState("");
 
   const [identityKey, setIdentityKey] = useState("");
   const [identityFields, setIdentityFields] = useState("");
   const [sensitiveInformationItemId, setSensitiveInformationItemId] =
     useState("");
 
-  const [credentialId, setCredentialId] = useState("");
+  // credentialId is used for Skyvern credentials only
 
   return (
     <ScrollArea>
@@ -199,66 +190,13 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
             </>
           )}
           {type === "credential" && (
-            <SwitchBar
-              value={credentialType}
-              onChange={(value) => {
-                setCredentialType(
-                  value as "bitwarden" | "skyvern" | "onepassword",
-                );
-              }}
-              options={[
-                { label: "Skyvern", value: "skyvern" },
-                { label: "Bitwarden", value: "bitwarden" },
-                { label: "1Password", value: "onepassword" },
-              ]}
-            />
-          )}
-          {type === "credential" && credentialType === "bitwarden" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">
-                  URL Parameter Key
-                </Label>
-                <Input
-                  value={urlParameterKey}
-                  onChange={(e) => setUrlParameterKey(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={bitwardenCollectionId}
-                  onChange={(e) => setBitwardenCollectionId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={bitwardenLoginCredentialItemId}
-                  onChange={(e) =>
-                    setBitwardenLoginCredentialItemId(e.target.value)
-                  }
-                />
-              </div>
-            </>
-          )}
-          {type === "credential" && credentialType === "onepassword" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Vault ID</Label>
-                <Input
-                  value={vaultId}
-                  onChange={(e) => setVaultId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={itemId}
-                  onChange={(e) => setItemId(e.target.value)}
-                />
-              </div>
-            </>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-300">Credential</Label>
+              <CredentialParameterSourceSelector
+                value={credentialId}
+                onChange={(value) => setCredentialId(value)}
+              />
+            </div>
           )}
           {type === "context" && (
             <div className="space-y-1">
@@ -475,7 +413,7 @@ function WorkflowParameterAddPanel({ type, onClose, onSave }: Props) {
                     description,
                   });
                 }
-                if (type === "credential" && credentialType === "skyvern") {
+                if (type === "credential") {
                   if (!credentialId) {
                     toast({
                       variant: "destructive",

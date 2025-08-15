@@ -80,6 +80,8 @@ all subsequent API calls.
 
 Persistence note: Organization creation, license-to-organization mapping, machines, and profile data are now stored in Postgres; see `docs/ORGANIZATIONS_DB.md`.
 
+Credentials note: Credentials are stored in Postgres (no external password managers) and encrypted at rest (AES‑GCM). See `docs/CREDENTIALS_DB.md` for schema, encryption, and API usage.
+
 #### Code
 
 ```python

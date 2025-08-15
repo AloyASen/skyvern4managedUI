@@ -23,16 +23,11 @@ from skyvern.forge.sdk.db.id import (
     generate_ai_suggestion_id,
     generate_artifact_id,
     generate_aws_secret_parameter_id,
-    generate_bitwarden_credit_card_data_parameter_id,
-    generate_bitwarden_login_credential_parameter_id,
-    generate_bitwarden_sensitive_information_parameter_id,
     generate_credential_id,
     generate_credential_parameter_id,
     generate_debug_session_id,
-    generate_onepassword_credential_parameter_id,
     generate_org_id,
     generate_organization_auth_token_id,
-    generate_organization_bitwarden_collection_id,
     generate_output_parameter_id,
     generate_organization_license_id,
     generate_organization_machine_id,
@@ -395,83 +390,7 @@ class AWSSecretParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class BitwardenLoginCredentialParameterModel(Base):
-    __tablename__ = "bitwarden_login_credential_parameters"
-
-    bitwarden_login_credential_parameter_id = Column(
-        String,
-        primary_key=True,
-        index=True,
-        default=generate_bitwarden_login_credential_parameter_id,
-    )
-    workflow_id = Column(String, index=True, nullable=False)
-    key = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    bitwarden_client_id_aws_secret_key = Column(String, nullable=False)
-    bitwarden_client_secret_aws_secret_key = Column(String, nullable=False)
-    bitwarden_master_password_aws_secret_key = Column(String, nullable=False)
-    bitwarden_collection_id = Column(String, nullable=True, default=None)
-    bitwarden_item_id = Column(String, nullable=True, default=None)
-    url_parameter_key = Column(String, nullable=True, default=None)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
-    modified_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    deleted_at = Column(DateTime, nullable=True)
-
-
-class BitwardenSensitiveInformationParameterModel(Base):
-    __tablename__ = "bitwarden_sensitive_information_parameters"
-
-    bitwarden_sensitive_information_parameter_id = Column(
-        String,
-        primary_key=True,
-        index=True,
-        default=generate_bitwarden_sensitive_information_parameter_id,
-    )
-    workflow_id = Column(String, index=True, nullable=False)
-    key = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    bitwarden_client_id_aws_secret_key = Column(String, nullable=False)
-    bitwarden_client_secret_aws_secret_key = Column(String, nullable=False)
-    bitwarden_master_password_aws_secret_key = Column(String, nullable=False)
-    bitwarden_collection_id = Column(String, nullable=False)
-    bitwarden_identity_key = Column(String, nullable=False)
-    # This is a list of fields to extract from the Bitwarden Identity.
-    bitwarden_identity_fields = Column(JSON, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
-    modified_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    deleted_at = Column(DateTime, nullable=True)
-
-
-class BitwardenCreditCardDataParameterModel(Base):
-    __tablename__ = "bitwarden_credit_card_data_parameters"
-
-    bitwarden_credit_card_data_parameter_id = Column(
-        String,
-        primary_key=True,
-        index=True,
-        default=generate_bitwarden_credit_card_data_parameter_id,
-    )
-    workflow_id = Column(String, index=True, nullable=False)
-    key = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    bitwarden_client_id_aws_secret_key = Column(String, nullable=False)
-    bitwarden_client_secret_aws_secret_key = Column(String, nullable=False)
-    bitwarden_master_password_aws_secret_key = Column(String, nullable=False)
-    bitwarden_collection_id = Column(String, nullable=False)
-    bitwarden_item_id = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
-    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
-    deleted_at = Column(DateTime, nullable=True)
+## Deprecated: Bitwarden and 1Password parameter models removed
 
 
 class CredentialParameterModel(Base):
@@ -489,26 +408,6 @@ class CredentialParameterModel(Base):
     deleted_at = Column(DateTime, nullable=True)
 
 
-class OnePasswordCredentialParameterModel(Base):
-    __tablename__ = "onepassword_credential_parameters"
-
-    onepassword_credential_parameter_id = Column(
-        String, primary_key=True, default=generate_onepassword_credential_parameter_id
-    )
-    workflow_id = Column(String, index=True, nullable=False)
-    key = Column(String, nullable=False)
-    description = Column(String, nullable=True)
-    vault_id = Column(String, nullable=False)
-    item_id = Column(String, nullable=False)
-
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
-    modified_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    deleted_at = Column(DateTime, nullable=True)
 
 
 class WorkflowRunParameterModel(Base):
@@ -785,18 +684,7 @@ class TaskRunModel(Base):
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
 
-class OrganizationBitwardenCollectionModel(Base):
-    __tablename__ = "organization_bitwarden_collections"
-
-    organization_bitwarden_collection_id = Column(
-        String, primary_key=True, default=generate_organization_bitwarden_collection_id
-    )
-
-    organization_id = Column(String, nullable=False, index=True)
-    collection_id = Column(String, nullable=False)
-
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
-    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+## Deprecated: OrganizationBitwardenCollection removed
 
 
 class CredentialModel(Base):
@@ -812,6 +700,31 @@ class CredentialModel(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
     modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
     deleted_at = Column(DateTime, nullable=True)
+
+
+class CredentialPasswordModel(Base):
+    __tablename__ = "credential_passwords"
+
+    credential_id = Column(String, primary_key=True)
+    username = Column(String, nullable=False)
+    password = Column(String, nullable=False)
+    totp = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
+
+
+class CredentialCreditCardModel(Base):
+    __tablename__ = "credential_credit_cards"
+
+    credential_id = Column(String, primary_key=True)
+    card_number = Column(String, nullable=False)
+    card_cvv = Column(String, nullable=False)
+    card_exp_month = Column(String, nullable=False)
+    card_exp_year = Column(String, nullable=False)
+    card_brand = Column(String, nullable=False)
+    card_holder_name = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    modified_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow, nullable=False)
 
 
 class DebugSessionModel(Base):

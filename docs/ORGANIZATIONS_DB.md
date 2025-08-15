@@ -17,6 +17,7 @@ Organizations persistence in Postgres
 - Security:
   - License keys are never stored in plaintext; only a SHA-256 hex `license_key_hash` is persisted.
   - Logs mask license values; only hashes and machine IDs are recorded in DB.
+  - Secrets elsewhere in the system (passwords, cards) are encrypted at rest with AES‑GCM. See `docs/CREDENTIALS_DB.md`.
 
 - API behavior changes:
   - `POST /auth/login`: On successful license validation, the service persists the org-license mapping, machine association, and current profile snapshot.
@@ -35,4 +36,3 @@ Organizations persistence in Postgres
   - Existing organizations continue to be created via `get_or_create_user_org()` using a stable user_id derived from the license key.
   - A first successful login creates rows in `organization_licenses` and `organization_machines`, plus the org profile snapshot.
   - Re-logins update the profile row in place and insert missing machine associations if new.
-

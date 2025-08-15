@@ -1760,7 +1760,9 @@ class Skyvern:
         request_options: typing.Optional[RequestOptions] = None,
     ) -> WorkflowRunResponse:
         """
-        Log in to a website using either credential stored in Skyvern, Bitwarden or 1Password
+        Log in to a website using a credential stored in Skyvern.
+
+        Note: External providers (Bitwarden/1Password) are deprecated and ignored.
 
         Parameters
         ----------
@@ -1798,16 +1800,16 @@ class Skyvern:
             ID of the Skyvern credential to use for login.
 
         bitwarden_collection_id : typing.Optional[str]
-            Bitwarden collection ID. You can find it in the Bitwarden collection URL. e.g. `https://vault.bitwarden.com/vaults/collection_id/items`
+            DEPRECATED. Ignored.
 
         bitwarden_item_id : typing.Optional[str]
-            Bitwarden item ID
+            DEPRECATED. Ignored.
 
         onepassword_vault_id : typing.Optional[str]
-            1Password vault ID
+            DEPRECATED. Ignored.
 
         onepassword_item_id : typing.Optional[str]
-            1Password item ID
+            DEPRECATED. Ignored.
 
         request_options : typing.Optional[RequestOptions]
             Request-specific configuration.
@@ -1844,10 +1846,7 @@ class Skyvern:
                 "extra_http_headers": extra_http_headers,
                 "max_screenshot_scrolling_times": max_screenshot_scrolling_times,
                 "credential_id": credential_id,
-                "bitwarden_collection_id": bitwarden_collection_id,
-                "bitwarden_item_id": bitwarden_item_id,
-                "onepassword_vault_id": onepassword_vault_id,
-                "onepassword_item_id": onepassword_item_id,
+                # Deprecated external provider fields intentionally omitted
             },
             headers={
                 "content-type": "application/json",

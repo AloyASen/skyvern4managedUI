@@ -1,4 +1,3 @@
-import { SwitchBar } from "@/components/SwitchBar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -23,14 +22,9 @@ import {
   WorkflowParameterValueType,
 } from "../../types/workflowTypes";
 import { WorkflowParameterInput } from "../../WorkflowParameterInput";
-import {
-  parameterIsBitwardenCredential,
-  parameterIsSkyvernCredential,
-  parameterIsOnePasswordCredential,
-  ParametersState,
-} from "../types";
+import { parameterIsSkyvernCredential, ParametersState } from "../types";
 import { getDefaultValueForParameterType } from "../workflowEditorUtils";
-import { validateBitwardenLoginCredential } from "./util";
+// External providers removed; only Skyvern credentials are supported
 
 type Props = {
   type: WorkflowEditorParameterType;
@@ -73,36 +67,14 @@ function WorkflowParameterEditPanel({
 }: Props) {
   const isCloud = useContext(CloudContext);
   const [key, setKey] = useState(initialValues.key);
-  const isBitwardenCredential =
-    initialValues.parameterType === "credential" &&
-    parameterIsBitwardenCredential(initialValues);
   const isSkyvernCredential =
     initialValues.parameterType === "credential" &&
     parameterIsSkyvernCredential(initialValues);
-  const isOnePasswordCredential =
-    initialValues.parameterType === "onepassword" &&
-    parameterIsOnePasswordCredential(initialValues);
-  const [credentialType, setCredentialType] = useState<
-    "bitwarden" | "skyvern" | "onepassword"
-  >(
-    isBitwardenCredential
-      ? "bitwarden"
-      : isOnePasswordCredential
-        ? "onepassword"
-        : "skyvern",
-  );
-  const [urlParameterKey, setUrlParameterKey] = useState(
-    isBitwardenCredential ? initialValues.urlParameterKey ?? "" : "",
+  const [credentialId, setCredentialId] = useState(
+    isSkyvernCredential ? initialValues.credentialId : "",
   );
   const [description, setDescription] = useState(
     initialValues.description ?? "",
-  );
-  const [collectionId, setCollectionId] = useState(
-    isBitwardenCredential ||
-      initialValues.parameterType === "secret" ||
-      initialValues.parameterType === "creditCardData"
-      ? initialValues.collectionId ?? ""
-      : "",
   );
   const [parameterType, setParameterType] =
     useState<WorkflowParameterValueType>(
@@ -144,24 +116,15 @@ function WorkflowParameterEditPanel({
       : "",
   );
 
-  const [itemId, setItemId] = useState(
-    initialValues.parameterType === "creditCardData"
-      ? initialValues.itemId
+  const [collectionId, setCollectionId] = useState(
+    initialValues.parameterType === "secret" ||
+      initialValues.parameterType === "creditCardData"
+      ? initialValues.collectionId ?? ""
       : "",
   );
-
-  const [credentialId, setCredentialId] = useState(
-    isSkyvernCredential ? initialValues.credentialId : "",
+  const [itemId, setItemId] = useState(
+    initialValues.parameterType === "creditCardData" ? initialValues.itemId : "",
   );
-  const [vaultId, setVaultId] = useState(
-    isOnePasswordCredential ? initialValues.vaultId : "",
-  );
-  const [opItemId, setOpItemId] = useState(
-    isOnePasswordCredential ? initialValues.itemId : "",
-  );
-
-  const [bitwardenLoginCredentialItemId, setBitwardenLoginCredentialItemId] =
-    useState(isBitwardenCredential ? initialValues.itemId ?? "" : "");
 
   return (
     <ScrollArea>
@@ -269,66 +232,13 @@ function WorkflowParameterEditPanel({
             </>
           )}
           {type === "credential" && (
-            <SwitchBar
-              value={credentialType}
-              onChange={(value) => {
-                setCredentialType(
-                  value as "bitwarden" | "skyvern" | "onepassword",
-                );
-              }}
-              options={[
-                { label: "Skyvern", value: "skyvern" },
-                { label: "Bitwarden", value: "bitwarden" },
-                { label: "1Password", value: "onepassword" },
-              ]}
-            />
-          )}
-          {type === "credential" && credentialType === "bitwarden" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">
-                  URL Parameter Key
-                </Label>
-                <Input
-                  value={urlParameterKey}
-                  onChange={(e) => setUrlParameterKey(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Collection ID</Label>
-                <Input
-                  value={collectionId}
-                  onChange={(e) => setCollectionId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={bitwardenLoginCredentialItemId}
-                  onChange={(e) =>
-                    setBitwardenLoginCredentialItemId(e.target.value)
-                  }
-                />
-              </div>
-            </>
-          )}
-          {type === "credential" && credentialType === "onepassword" && (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Vault ID</Label>
-                <Input
-                  value={vaultId}
-                  onChange={(e) => setVaultId(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-slate-300">Item ID</Label>
-                <Input
-                  value={opItemId}
-                  onChange={(e) => setOpItemId(e.target.value)}
-                />
-              </div>
-            </>
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-300">Credential</Label>
+              <CredentialParameterSourceSelector
+                value={credentialId}
+                onChange={(value) => setCredentialId(value)}
+              />
+            </div>
           )}
           {type === "context" && (
             <div className="space-y-1">
@@ -440,47 +350,20 @@ function WorkflowParameterEditPanel({
                       : null,
                   });
                 }
-                if (type === "credential" && credentialType === "bitwarden") {
-                  const errorMessage = validateBitwardenLoginCredential(
-                    collectionId,
-                    bitwardenLoginCredentialItemId,
-                    urlParameterKey,
-                  );
-                  if (errorMessage) {
+                // Skyvern-only credentials
+                if (type === "credential") {
+                  if (!credentialId) {
                     toast({
                       variant: "destructive",
                       title: "Failed to save parameter",
-                      description: errorMessage,
+                      description: "Credential is required",
                     });
                     return;
                   }
                   onSave({
                     key,
                     parameterType: "credential",
-                    itemId:
-                      bitwardenLoginCredentialItemId === ""
-                        ? null
-                        : bitwardenLoginCredentialItemId,
-                    urlParameterKey:
-                      urlParameterKey === "" ? null : urlParameterKey,
-                    collectionId: collectionId === "" ? null : collectionId,
-                    description,
-                  });
-                }
-                if (type === "credential" && credentialType === "onepassword") {
-                  if (vaultId.trim() === "" || opItemId.trim() === "") {
-                    toast({
-                      variant: "destructive",
-                      title: "Failed to save parameter",
-                      description: "Vault ID and Item ID are required",
-                    });
-                    return;
-                  }
-                  onSave({
-                    key,
-                    parameterType: "onepassword",
-                    vaultId,
-                    itemId: opItemId,
+                    credentialId,
                     description,
                   });
                 }
