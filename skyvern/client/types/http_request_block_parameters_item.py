@@ -218,12 +218,8 @@ class HttpRequestBlockParametersItem_Workflow(UniversalBaseModel):
 
 HttpRequestBlockParametersItem = typing.Union[
     HttpRequestBlockParametersItem_AwsSecret,
-    HttpRequestBlockParametersItem_BitwardenCreditCardData,
-    HttpRequestBlockParametersItem_BitwardenLoginCredential,
-    HttpRequestBlockParametersItem_BitwardenSensitiveInformation,
     HttpRequestBlockParametersItem_Context,
     HttpRequestBlockParametersItem_Credential,
-    HttpRequestBlockParametersItem_Onepassword,
     HttpRequestBlockParametersItem_Output,
     HttpRequestBlockParametersItem_Workflow,
 ]

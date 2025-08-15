@@ -218,12 +218,8 @@ class UrlBlockParametersItem_Workflow(UniversalBaseModel):
 
 UrlBlockParametersItem = typing.Union[
     UrlBlockParametersItem_AwsSecret,
-    UrlBlockParametersItem_BitwardenCreditCardData,
-    UrlBlockParametersItem_BitwardenLoginCredential,
-    UrlBlockParametersItem_BitwardenSensitiveInformation,
     UrlBlockParametersItem_Context,
     UrlBlockParametersItem_Credential,
-    UrlBlockParametersItem_Onepassword,
     UrlBlockParametersItem_Output,
     UrlBlockParametersItem_Workflow,
 ]

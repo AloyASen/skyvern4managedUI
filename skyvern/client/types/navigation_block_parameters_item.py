@@ -218,12 +218,8 @@ class NavigationBlockParametersItem_Workflow(UniversalBaseModel):
 
 NavigationBlockParametersItem = typing.Union[
     NavigationBlockParametersItem_AwsSecret,
-    NavigationBlockParametersItem_BitwardenCreditCardData,
-    NavigationBlockParametersItem_BitwardenLoginCredential,
-    NavigationBlockParametersItem_BitwardenSensitiveInformation,
     NavigationBlockParametersItem_Context,
     NavigationBlockParametersItem_Credential,
-    NavigationBlockParametersItem_Onepassword,
     NavigationBlockParametersItem_Output,
     NavigationBlockParametersItem_Workflow,
 ]

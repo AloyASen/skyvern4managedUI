@@ -170,12 +170,8 @@ class WorkflowDefinitionYamlParametersItem_Workflow(UniversalBaseModel):
 
 WorkflowDefinitionYamlParametersItem = typing.Union[
     WorkflowDefinitionYamlParametersItem_AwsSecret,
-    WorkflowDefinitionYamlParametersItem_BitwardenCreditCardData,
-    WorkflowDefinitionYamlParametersItem_BitwardenLoginCredential,
-    WorkflowDefinitionYamlParametersItem_BitwardenSensitiveInformation,
     WorkflowDefinitionYamlParametersItem_Context,
     WorkflowDefinitionYamlParametersItem_Credential,
-    WorkflowDefinitionYamlParametersItem_Onepassword,
     WorkflowDefinitionYamlParametersItem_Output,
     WorkflowDefinitionYamlParametersItem_Workflow,
 ]

@@ -3766,7 +3766,7 @@ class AsyncSkyvern:
         request_options: typing.Optional[RequestOptions] = None,
     ) -> WorkflowRunResponse:
         """
-        Log in to a website using either credential stored in Skyvern, Bitwarden or 1Password
+        Log in to a website using a credential stored in Skyvern.
 
         Parameters
         ----------

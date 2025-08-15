@@ -33,81 +33,6 @@ class ActionBlockParametersItem_AwsSecret(UniversalBaseModel):
             extra = pydantic.Extra.allow
 
 
-class ActionBlockParametersItem_BitwardenCreditCardData(UniversalBaseModel):
-    parameter_type: typing.Literal["bitwarden_credit_card_data"] = "bitwarden_credit_card_data"
-    key: str
-    description: typing.Optional[str] = None
-    bitwarden_credit_card_data_parameter_id: str
-    workflow_id: str
-    bitwarden_client_id_aws_secret_key: str
-    bitwarden_client_secret_aws_secret_key: str
-    bitwarden_master_password_aws_secret_key: str
-    bitwarden_collection_id: str
-    bitwarden_item_id: str
-    created_at: dt.datetime
-    modified_at: dt.datetime
-    deleted_at: typing.Optional[dt.datetime] = None
-
-    if IS_PYDANTIC_V2:
-        model_config: typing.ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(extra="allow", frozen=True)  # type: ignore # Pydantic v2
-    else:
-
-        class Config:
-            frozen = True
-            smart_union = True
-            extra = pydantic.Extra.allow
-
-
-class ActionBlockParametersItem_BitwardenLoginCredential(UniversalBaseModel):
-    parameter_type: typing.Literal["bitwarden_login_credential"] = "bitwarden_login_credential"
-    key: str
-    description: typing.Optional[str] = None
-    bitwarden_login_credential_parameter_id: str
-    workflow_id: str
-    bitwarden_client_id_aws_secret_key: str
-    bitwarden_client_secret_aws_secret_key: str
-    bitwarden_master_password_aws_secret_key: str
-    url_parameter_key: typing.Optional[str] = None
-    bitwarden_collection_id: typing.Optional[str] = None
-    bitwarden_item_id: typing.Optional[str] = None
-    created_at: dt.datetime
-    modified_at: dt.datetime
-    deleted_at: typing.Optional[dt.datetime] = None
-
-    if IS_PYDANTIC_V2:
-        model_config: typing.ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(extra="allow", frozen=True)  # type: ignore # Pydantic v2
-    else:
-
-        class Config:
-            frozen = True
-            smart_union = True
-            extra = pydantic.Extra.allow
-
-
-class ActionBlockParametersItem_BitwardenSensitiveInformation(UniversalBaseModel):
-    parameter_type: typing.Literal["bitwarden_sensitive_information"] = "bitwarden_sensitive_information"
-    key: str
-    description: typing.Optional[str] = None
-    bitwarden_sensitive_information_parameter_id: str
-    workflow_id: str
-    bitwarden_client_id_aws_secret_key: str
-    bitwarden_client_secret_aws_secret_key: str
-    bitwarden_master_password_aws_secret_key: str
-    bitwarden_collection_id: str
-    bitwarden_identity_key: str
-    bitwarden_identity_fields: typing.List[str]
-    created_at: dt.datetime
-    modified_at: dt.datetime
-    deleted_at: typing.Optional[dt.datetime] = None
-
-    if IS_PYDANTIC_V2:
-        model_config: typing.ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(extra="allow", frozen=True)  # type: ignore # Pydantic v2
-    else:
-
-        class Config:
-            frozen = True
-            smart_union = True
-            extra = pydantic.Extra.allow
 
 
 class ActionBlockParametersItem_Context(UniversalBaseModel):
@@ -152,26 +77,6 @@ class ActionBlockParametersItem_Credential(UniversalBaseModel):
             extra = pydantic.Extra.allow
 
 
-class ActionBlockParametersItem_Onepassword(UniversalBaseModel):
-    parameter_type: typing.Literal["onepassword"] = "onepassword"
-    key: str
-    description: typing.Optional[str] = None
-    onepassword_credential_parameter_id: str
-    workflow_id: str
-    vault_id: str
-    item_id: str
-    created_at: dt.datetime
-    modified_at: dt.datetime
-    deleted_at: typing.Optional[dt.datetime] = None
-
-    if IS_PYDANTIC_V2:
-        model_config: typing.ClassVar[pydantic.ConfigDict] = pydantic.ConfigDict(extra="allow", frozen=True)  # type: ignore # Pydantic v2
-    else:
-
-        class Config:
-            frozen = True
-            smart_union = True
-            extra = pydantic.Extra.allow
 
 
 class ActionBlockParametersItem_Output(UniversalBaseModel):
@@ -218,12 +123,8 @@ class ActionBlockParametersItem_Workflow(UniversalBaseModel):
 
 ActionBlockParametersItem = typing.Union[
     ActionBlockParametersItem_AwsSecret,
-    ActionBlockParametersItem_BitwardenCreditCardData,
-    ActionBlockParametersItem_BitwardenLoginCredential,
-    ActionBlockParametersItem_BitwardenSensitiveInformation,
     ActionBlockParametersItem_Context,
     ActionBlockParametersItem_Credential,
-    ActionBlockParametersItem_Onepassword,
     ActionBlockParametersItem_Output,
     ActionBlockParametersItem_Workflow,
 ]

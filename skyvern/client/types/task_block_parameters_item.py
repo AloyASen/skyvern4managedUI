@@ -218,12 +218,8 @@ class TaskBlockParametersItem_Workflow(UniversalBaseModel):
 
 TaskBlockParametersItem = typing.Union[
     TaskBlockParametersItem_AwsSecret,
-    TaskBlockParametersItem_BitwardenCreditCardData,
-    TaskBlockParametersItem_BitwardenLoginCredential,
-    TaskBlockParametersItem_BitwardenSensitiveInformation,
     TaskBlockParametersItem_Context,
     TaskBlockParametersItem_Credential,
-    TaskBlockParametersItem_Onepassword,
     TaskBlockParametersItem_Output,
     TaskBlockParametersItem_Workflow,
 ]

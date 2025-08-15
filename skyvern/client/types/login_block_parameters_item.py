@@ -218,12 +218,8 @@ class LoginBlockParametersItem_Workflow(UniversalBaseModel):
 
 LoginBlockParametersItem = typing.Union[
     LoginBlockParametersItem_AwsSecret,
-    LoginBlockParametersItem_BitwardenCreditCardData,
-    LoginBlockParametersItem_BitwardenLoginCredential,
-    LoginBlockParametersItem_BitwardenSensitiveInformation,
     LoginBlockParametersItem_Context,
     LoginBlockParametersItem_Credential,
-    LoginBlockParametersItem_Onepassword,
     LoginBlockParametersItem_Output,
     LoginBlockParametersItem_Workflow,
 ]

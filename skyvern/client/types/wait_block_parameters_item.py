@@ -218,12 +218,8 @@ class WaitBlockParametersItem_Workflow(UniversalBaseModel):
 
 WaitBlockParametersItem = typing.Union[
     WaitBlockParametersItem_AwsSecret,
-    WaitBlockParametersItem_BitwardenCreditCardData,
-    WaitBlockParametersItem_BitwardenLoginCredential,
-    WaitBlockParametersItem_BitwardenSensitiveInformation,
     WaitBlockParametersItem_Context,
     WaitBlockParametersItem_Credential,
-    WaitBlockParametersItem_Onepassword,
     WaitBlockParametersItem_Output,
     WaitBlockParametersItem_Workflow,
 ]

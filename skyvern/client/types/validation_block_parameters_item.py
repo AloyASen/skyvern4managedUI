@@ -218,12 +218,8 @@ class ValidationBlockParametersItem_Workflow(UniversalBaseModel):
 
 ValidationBlockParametersItem = typing.Union[
     ValidationBlockParametersItem_AwsSecret,
-    ValidationBlockParametersItem_BitwardenCreditCardData,
-    ValidationBlockParametersItem_BitwardenLoginCredential,
-    ValidationBlockParametersItem_BitwardenSensitiveInformation,
     ValidationBlockParametersItem_Context,
     ValidationBlockParametersItem_Credential,
-    ValidationBlockParametersItem_Onepassword,
     ValidationBlockParametersItem_Output,
     ValidationBlockParametersItem_Workflow,
 ]

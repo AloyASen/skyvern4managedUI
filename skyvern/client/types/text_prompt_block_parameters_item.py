@@ -218,12 +218,8 @@ class TextPromptBlockParametersItem_Workflow(UniversalBaseModel):
 
 TextPromptBlockParametersItem = typing.Union[
     TextPromptBlockParametersItem_AwsSecret,
-    TextPromptBlockParametersItem_BitwardenCreditCardData,
-    TextPromptBlockParametersItem_BitwardenLoginCredential,
-    TextPromptBlockParametersItem_BitwardenSensitiveInformation,
     TextPromptBlockParametersItem_Context,
     TextPromptBlockParametersItem_Credential,
-    TextPromptBlockParametersItem_Onepassword,
     TextPromptBlockParametersItem_Output,
     TextPromptBlockParametersItem_Workflow,
 ]
