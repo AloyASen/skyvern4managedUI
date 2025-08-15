@@ -23,11 +23,7 @@ export type WorkflowDefinitionYAML = {
 
 export type ParameterYAML =
   | WorkflowParameterYAML
-  | BitwardenLoginCredentialParameterYAML
   | AWSSecretParameterYAML
-  | BitwardenSensitiveInformationParameterYAML
-  | BitwardenCreditCardDataParameterYAML
-  | OnePasswordCredentialParameterYAML
   | ContextParameterYAML
   | OutputParameterYAML
   | CredentialParameterYAML;
@@ -44,48 +40,12 @@ export type WorkflowParameterYAML = ParameterYAMLBase & {
   default_value?: unknown;
 };
 
-export type BitwardenLoginCredentialParameterYAML = ParameterYAMLBase & {
-  parameter_type: "bitwarden_login_credential";
-  bitwarden_collection_id: string | null;
-  bitwarden_item_id: string | null;
-  url_parameter_key: string | null;
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-};
-
 export type AWSSecretParameterYAML = ParameterYAMLBase & {
   parameter_type: "aws_secret";
   aws_key: string;
 };
 
-export type BitwardenSensitiveInformationParameterYAML = ParameterYAMLBase & {
-  parameter_type: "bitwarden_sensitive_information";
-  bitwarden_collection_id: string;
-  bitwarden_identity_key: string;
-  bitwarden_identity_fields: Array<string>;
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-};
-
-export type BitwardenCreditCardDataParameterYAML = ParameterYAMLBase & {
-  parameter_type: "bitwarden_credit_card_data";
-
-  // bitwarden ids for the credit card item
-  bitwarden_collection_id: string;
-  bitwarden_item_id: string;
-
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-};
-
-export type OnePasswordCredentialParameterYAML = ParameterYAMLBase & {
-  parameter_type: "onepassword";
-  vault_id: string;
-  item_id: string;
-};
+// External provider parameter YAML types removed
 
 export type ContextParameterYAML = ParameterYAMLBase & {
   parameter_type: "context";

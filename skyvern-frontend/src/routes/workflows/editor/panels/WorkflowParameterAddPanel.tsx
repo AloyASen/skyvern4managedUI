@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
 import { Cross2Icon } from "@radix-ui/react-icons";
-import { useContext, useState } from "react";
+import { useState } from "react";
 import { CredentialParameterSourceSelector } from "../../components/CredentialParameterSourceSelector";
 import { SourceParameterKeySelector } from "../../components/SourceParameterKeySelector";
 import {

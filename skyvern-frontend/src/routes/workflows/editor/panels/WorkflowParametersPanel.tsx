@@ -141,9 +141,7 @@ function WorkflowParametersPanel() {
                         </span>
                       ) : (
                         <span className="text-sm text-slate-400">
-                          {parameter.parameterType === "onepassword"
-                            ? "credential"
-                            : parameter.parameterType}
+                          {parameter.parameterType}
                         </span>
                       )}
                     </div>
@@ -155,10 +153,7 @@ function WorkflowParametersPanel() {
                             active: true,
                             operation: "edit",
                             parameter: parameter,
-                            type:
-                              parameter.parameterType === "onepassword"
-                                ? WorkflowEditorParameterTypes.Credential
-                                : parameter.parameterType,
+                            type: parameter.parameterType,
                           });
                         }}
                       />

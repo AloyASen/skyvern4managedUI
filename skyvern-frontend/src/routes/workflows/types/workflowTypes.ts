@@ -17,60 +17,6 @@ export type AWSSecretParameter = WorkflowParameterBase & {
   deleted_at: string | null;
 };
 
-export type BitwardenLoginCredentialParameter = WorkflowParameterBase & {
-  parameter_type: "bitwarden_login_credential";
-  workflow_id: string;
-  bitwarden_login_credential_parameter_id: string;
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-  bitwarden_collection_id: string | null;
-  bitwarden_item_id: string | null;
-  url_parameter_key: string | null;
-  created_at: string;
-  modified_at: string;
-  deleted_at: string | null;
-};
-
-export type BitwardenSensitiveInformationParameter = WorkflowParameterBase & {
-  parameter_type: "bitwarden_sensitive_information";
-  workflow_id: string;
-  bitwarden_sensitive_information_parameter_id: string;
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-  bitwarden_collection_id: string;
-  bitwarden_identity_key: string;
-  bitwarden_identity_fields: Array<string>;
-  created_at: string;
-  modified_at: string;
-  deleted_at: string | null;
-};
-
-export type BitwardenCreditCardDataParameter = WorkflowParameterBase & {
-  parameter_type: "bitwarden_credit_card_data";
-  workflow_id: string;
-  bitwarden_credit_card_data_parameter_id: string;
-  bitwarden_client_id_aws_secret_key: string;
-  bitwarden_client_secret_aws_secret_key: string;
-  bitwarden_master_password_aws_secret_key: string;
-  bitwarden_collection_id: string;
-  bitwarden_item_id: string;
-  created_at: string;
-  modified_at: string;
-  deleted_at: string | null;
-};
-
-export type OnePasswordCredentialParameter = WorkflowParameterBase & {
-  parameter_type: "onepassword";
-  workflow_id: string;
-  onepassword_credential_parameter_id: string;
-  vault_id: string;
-  item_id: string;
-  created_at: string;
-  modified_at: string;
-  deleted_at: string | null;
-};
 
 export type CredentialParameter = WorkflowParameterBase & {
   parameter_type: "credential";
@@ -126,10 +72,6 @@ export const WorkflowParameterTypes = {
   Context: "context",
   Output: "output",
   AWS_Secret: "aws_secret",
-  Bitwarden_Login_Credential: "bitwarden_login_credential",
-  Bitwarden_Sensitive_Information: "bitwarden_sensitive_information",
-  Bitwarden_Credit_Card_Data: "bitwarden_credit_card_data",
-  OnePassword: "onepassword",
   Credential: "credential",
 } as const;
 
@@ -141,21 +83,10 @@ export function isDisplayedInWorkflowEditor(
 ): parameter is
   | WorkflowParameter
   | ContextParameter
-  | BitwardenCreditCardDataParameter
-  | BitwardenLoginCredentialParameter
-  | BitwardenSensitiveInformationParameter
-  | OnePasswordCredentialParameter
   | CredentialParameter {
   return (
     parameter.parameter_type === WorkflowParameterTypes.Workflow ||
-    parameter.parameter_type ===
-      WorkflowParameterTypes.Bitwarden_Login_Credential ||
     parameter.parameter_type === WorkflowParameterTypes.Context ||
-    parameter.parameter_type ===
-      WorkflowParameterTypes.Bitwarden_Sensitive_Information ||
-    parameter.parameter_type ===
-      WorkflowParameterTypes.Bitwarden_Credit_Card_Data ||
-    parameter.parameter_type === WorkflowParameterTypes.OnePassword ||
     parameter.parameter_type === WorkflowParameterTypes.Credential
   );
 }
@@ -164,10 +95,6 @@ export type Parameter =
   | WorkflowParameter
   | OutputParameter
   | ContextParameter
-  | BitwardenLoginCredentialParameter
-  | BitwardenSensitiveInformationParameter
-  | BitwardenCreditCardDataParameter
-  | OnePasswordCredentialParameter
   | AWSSecretParameter
   | CredentialParameter;
 
