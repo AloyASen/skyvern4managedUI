@@ -11,7 +11,7 @@ from skyvern.exceptions import (
 )
 from skyvern.forge import app
 from skyvern.forge.sdk.api.aws import AsyncAWSClient
-from skyvern.forge.sdk.schemas.credentials import PasswordCredential, CredentialType
+from skyvern.forge.sdk.schemas.credentials import CredentialType
 from skyvern.forge.sdk.schemas.organizations import Organization
 from skyvern.forge.sdk.schemas.tasks import TaskStatus
 from skyvern.forge.sdk.workflow.exceptions import OutputParameterKeyCollisionError
@@ -45,13 +45,7 @@ class WorkflowRunContext:
         workflow_parameter_tuples: list[tuple[WorkflowParameter, "WorkflowRunParameter"]],
         workflow_output_parameters: list[OutputParameter],
         context_parameters: list[ContextParameter],
-        secret_parameters: list[
-            AWSSecretParameter
-            | BitwardenLoginCredentialParameter
-            | BitwardenCreditCardDataParameter
-            | BitwardenSensitiveInformationParameter
-            | CredentialParameter
-        ],
+        secret_parameters: list[AWSSecretParameter | CredentialParameter],
     ) -> Self:
         # key is label name
         workflow_run_context = cls(aws_client=aws_client)
@@ -317,15 +311,6 @@ class WorkflowRunContext:
     async def register_onepassword_credential_parameter_value(self, parameter: Any) -> None:
         raise NotImplementedError("1Password integration has been removed")
 
-    async def register_bitwarden_login_credential_parameter_value(self, parameter: Any, organization: Organization) -> None:
-        raise NotImplementedError("Bitwarden integration has been removed")
-
-    async def register_bitwarden_sensitive_information_parameter_value(self, parameter: Any, organization: Organization) -> None:
-        raise NotImplementedError("Bitwarden integration has been removed")
-
-    async def register_bitwarden_credit_card_data_parameter_value(self, parameter: Any, organization: Organization) -> None:
-        raise NotImplementedError("Bitwarden integration has been removed")
-
     async def register_parameter_value(
         self,
         aws_client: AsyncAWSClient,
@@ -465,9 +450,8 @@ class WorkflowRunContext:
         parameters: list[PARAMETER_TYPE],
         organization: Organization,
     ) -> None:
-        # Sort the parameters so that ContextParameter and BitwardenLoginCredentialParameter are processed last
+        # Sort the parameters so that ContextParameter are processed last
         # ContextParameter should be processed at the end since it requires the source parameter to be set
-        # BitwardenLoginCredentialParameter should be processed last since it requires the URL parameter to be set
         # Python's tuple comparison works lexicographically, so we can sort the parameters by their type in a tuple
         parameters.sort(
             key=lambda x: (
@@ -475,7 +459,6 @@ class WorkflowRunContext:
                 # This makes sure that ContextParameters witha ContextParameter source are processed after all other
                 # ContextParameters
                 (isinstance(x.source, ContextParameter) if isinstance(x, ContextParameter) else False),
-                isinstance(x, BitwardenLoginCredentialParameter),
             )
         )
 
@@ -502,9 +485,6 @@ class WorkflowRunContext:
                 parameter,
                 (
                     AWSSecretParameter,
-                    BitwardenLoginCredentialParameter,
-                    BitwardenCreditCardDataParameter,
-                    BitwardenSensitiveInformationParameter,
                     CredentialParameter,
                 ),
             ):
@@ -546,12 +526,7 @@ class WorkflowContextManager:
         workflow_parameter_tuples: list[tuple[WorkflowParameter, "WorkflowRunParameter"]],
         workflow_output_parameters: list[OutputParameter],
         context_parameters: list[ContextParameter],
-        secret_parameters: list[
-            AWSSecretParameter
-            | BitwardenLoginCredentialParameter
-            | BitwardenCreditCardDataParameter
-            | BitwardenSensitiveInformationParameter
-        ],
+        secret_parameters: list[AWSSecretParameter | CredentialParameter],
     ) -> WorkflowRunContext:
         workflow_run_context = await WorkflowRunContext.init(
             self.aws_client,

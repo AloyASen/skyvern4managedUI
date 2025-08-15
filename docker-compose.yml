@@ -35,9 +35,9 @@ services:
       - ./har:/data/har
       - ./log:/data/log
       - ./.streamlit:/app/.streamlit
-      # Uncomment the following two lines if you want to connect to any local changes
-      # - ./skyvern:/app/skyvern
-      # - ./alembic:/app/alembic
+      # Mount local source to override installed package for rapid iteration
+      - ./skyvern:/app/skyvern
+      - ./alembic:/app/alembic
     environment:
       - DATABASE_STRING=postgresql+psycopg://skyvern:skyvern@postgres:5432/skyvern
       - SECRET_KEY=${SECRET_KEY}
