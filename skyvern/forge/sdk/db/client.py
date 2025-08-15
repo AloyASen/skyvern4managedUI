@@ -17,20 +17,17 @@ from skyvern.forge.sdk.db.models import (
     AISuggestionModel,
     ArtifactModel,
     AWSSecretParameterModel,
-    BitwardenCreditCardDataParameterModel,
-    BitwardenLoginCredentialParameterModel,
-    BitwardenSensitiveInformationParameterModel,
     CredentialModel,
     CredentialParameterModel,
     DebugSessionModel,
-    OnePasswordCredentialParameterModel,
+    
     OrganizationAuthTokenModel,
     CredentialPasswordModel,
     CredentialCreditCardModel,
     OrganizationLicenseModel,
     OrganizationMachineModel,
     OrganizationProfileModel,
-    OrganizationBitwardenCollectionModel,
+    
     OrganizationModel,
     OutputParameterModel,
     PersistentBrowserSessionModel,
@@ -56,8 +53,7 @@ from skyvern.forge.sdk.db.utils import (
     _custom_json_serializer,
     convert_to_artifact,
     convert_to_aws_secret_parameter,
-    convert_to_bitwarden_login_credential_parameter,
-    convert_to_bitwarden_sensitive_information_parameter,
+    
     convert_to_organization,
     convert_to_organization_auth_token,
     convert_to_output_parameter,
@@ -84,7 +80,7 @@ from skyvern.forge.sdk.schemas.credentials import (
     CreditCardCredential,
 )
 from skyvern.forge.sdk.schemas.debug_sessions import DebugSession
-from skyvern.forge.sdk.schemas.organization_bitwarden_collections import OrganizationBitwardenCollection
+ 
 from skyvern.forge.sdk.schemas.organizations import Organization, OrganizationAuthToken
 from skyvern.forge.sdk.schemas.org_profiles import OrganizationProfile
 from skyvern.forge.sdk.schemas.persistent_browser_sessions import PersistentBrowserSession
@@ -97,11 +93,7 @@ from skyvern.forge.sdk.schemas.workflow_runs import WorkflowRunBlock
 from skyvern.forge.sdk.workflow.models.block import BlockStatus, BlockType
 from skyvern.forge.sdk.workflow.models.parameter import (
     AWSSecretParameter,
-    BitwardenCreditCardDataParameter,
-    BitwardenLoginCredentialParameter,
-    BitwardenSensitiveInformationParameter,
     CredentialParameter,
-    OnePasswordCredentialParameter,
     OutputParameter,
     WorkflowParameter,
     WorkflowParameterType,
@@ -2034,90 +2026,7 @@ class AgentDB:
             await session.refresh(aws_secret_parameter)
             return convert_to_aws_secret_parameter(aws_secret_parameter)
 
-    async def create_bitwarden_login_credential_parameter(
-        self,
-        workflow_id: str,
-        bitwarden_client_id_aws_secret_key: str,
-        bitwarden_client_secret_aws_secret_key: str,
-        bitwarden_master_password_aws_secret_key: str,
-        key: str,
-        url_parameter_key: str | None = None,
-        description: str | None = None,
-        bitwarden_collection_id: str | None = None,
-        bitwarden_item_id: str | None = None,
-    ) -> BitwardenLoginCredentialParameter:
-        async with self.Session() as session:
-            bitwarden_login_credential_parameter = BitwardenLoginCredentialParameterModel(
-                workflow_id=workflow_id,
-                bitwarden_client_id_aws_secret_key=bitwarden_client_id_aws_secret_key,
-                bitwarden_client_secret_aws_secret_key=bitwarden_client_secret_aws_secret_key,
-                bitwarden_master_password_aws_secret_key=bitwarden_master_password_aws_secret_key,
-                url_parameter_key=url_parameter_key,
-                key=key,
-                description=description,
-                bitwarden_collection_id=bitwarden_collection_id,
-                bitwarden_item_id=bitwarden_item_id,
-            )
-            session.add(bitwarden_login_credential_parameter)
-            await session.commit()
-            await session.refresh(bitwarden_login_credential_parameter)
-            return convert_to_bitwarden_login_credential_parameter(bitwarden_login_credential_parameter)
-
-    async def create_bitwarden_sensitive_information_parameter(
-        self,
-        workflow_id: str,
-        bitwarden_client_id_aws_secret_key: str,
-        bitwarden_client_secret_aws_secret_key: str,
-        bitwarden_master_password_aws_secret_key: str,
-        bitwarden_collection_id: str,
-        bitwarden_identity_key: str,
-        bitwarden_identity_fields: list[str],
-        key: str,
-        description: str | None = None,
-    ) -> BitwardenSensitiveInformationParameter:
-        async with self.Session() as session:
-            bitwarden_sensitive_information_parameter = BitwardenSensitiveInformationParameterModel(
-                workflow_id=workflow_id,
-                bitwarden_client_id_aws_secret_key=bitwarden_client_id_aws_secret_key,
-                bitwarden_client_secret_aws_secret_key=bitwarden_client_secret_aws_secret_key,
-                bitwarden_master_password_aws_secret_key=bitwarden_master_password_aws_secret_key,
-                bitwarden_collection_id=bitwarden_collection_id,
-                bitwarden_identity_key=bitwarden_identity_key,
-                bitwarden_identity_fields=bitwarden_identity_fields,
-                key=key,
-                description=description,
-            )
-            session.add(bitwarden_sensitive_information_parameter)
-            await session.commit()
-            await session.refresh(bitwarden_sensitive_information_parameter)
-            return convert_to_bitwarden_sensitive_information_parameter(bitwarden_sensitive_information_parameter)
-
-    async def create_bitwarden_credit_card_data_parameter(
-        self,
-        workflow_id: str,
-        bitwarden_client_id_aws_secret_key: str,
-        bitwarden_client_secret_aws_secret_key: str,
-        bitwarden_master_password_aws_secret_key: str,
-        bitwarden_collection_id: str,
-        bitwarden_item_id: str,
-        key: str,
-        description: str | None = None,
-    ) -> BitwardenCreditCardDataParameter:
-        async with self.Session() as session:
-            bitwarden_credit_card_data_parameter = BitwardenCreditCardDataParameterModel(
-                workflow_id=workflow_id,
-                bitwarden_client_id_aws_secret_key=bitwarden_client_id_aws_secret_key,
-                bitwarden_client_secret_aws_secret_key=bitwarden_client_secret_aws_secret_key,
-                bitwarden_master_password_aws_secret_key=bitwarden_master_password_aws_secret_key,
-                bitwarden_collection_id=bitwarden_collection_id,
-                bitwarden_item_id=bitwarden_item_id,
-                key=key,
-                description=description,
-            )
-            session.add(bitwarden_credit_card_data_parameter)
-            await session.commit()
-            await session.refresh(bitwarden_credit_card_data_parameter)
-            return BitwardenCreditCardDataParameter.model_validate(bitwarden_credit_card_data_parameter)
+    # Bitwarden/1Password parameter creation APIs removed
 
     async def create_output_parameter(
         self,
@@ -2186,31 +2095,7 @@ class AgentDB:
                 deleted_at=credential_parameter.deleted_at,
             )
 
-    async def create_onepassword_credential_parameter(
-        self, workflow_id: str, key: str, vault_id: str, item_id: str, description: str | None = None
-    ) -> OnePasswordCredentialParameter:
-        async with self.Session() as session:
-            parameter = OnePasswordCredentialParameterModel(
-                workflow_id=workflow_id,
-                key=key,
-                description=description,
-                vault_id=vault_id,
-                item_id=item_id,
-            )
-            session.add(parameter)
-            await session.commit()
-            await session.refresh(parameter)
-            return OnePasswordCredentialParameter(
-                onepassword_credential_parameter_id=parameter.onepassword_credential_parameter_id,
-                workflow_id=parameter.workflow_id,
-                key=parameter.key,
-                description=parameter.description,
-                vault_id=parameter.vault_id,
-                item_id=parameter.item_id,
-                created_at=parameter.created_at,
-                modified_at=parameter.modified_at,
-                deleted_at=parameter.deleted_at,
-            )
+    # OnePassword parameter creation API removed
 
     async def get_workflow_run_output_parameters(self, workflow_run_id: str) -> list[WorkflowRunOutputParameter]:
         try:
