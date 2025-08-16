@@ -3397,6 +3397,8 @@ class AgentDB:
             await session.commit()
 
     async def get_credential(self, credential_id: str, organization_id: str) -> Credential:
+        from uuid import uuid4
+
         async with self.Session() as session:
             credential = (
                 await session.scalars(
@@ -3407,6 +3409,11 @@ class AgentDB:
                 )
             ).first()
             if credential:
+                # Backfill item_id if missing on older rows
+                if credential.item_id is None:
+                    credential.item_id = str(uuid4())
+                    await session.commit()
+                    await session.refresh(credential)
                 return Credential.model_validate(credential)
             raise NotFoundError(f"Credential {credential_id} not found")
 
@@ -3440,6 +3447,8 @@ class AgentDB:
             )
 
     async def get_credentials(self, organization_id: str, page: int = 1, page_size: int = 10) -> list[Credential]:
+        from uuid import uuid4
+
         async with self.Session() as session:
             credentials = (
                 await session.scalars(
@@ -3451,6 +3460,19 @@ class AgentDB:
                     .limit(page_size)
                 )
             ).all()
+
+            # Backfill missing item_id values for legacy rows
+            updated = False
+            for cred in credentials:
+                if cred.item_id is None:
+                    cred.item_id = str(uuid4())
+                    updated = True
+            if updated:
+                await session.commit()
+                # Refresh rows to reflect latest state
+                for cred in credentials:
+                    await session.refresh(cred)
+
             return [Credential.model_validate(credential) for credential in credentials]
 
     async def update_credential(
