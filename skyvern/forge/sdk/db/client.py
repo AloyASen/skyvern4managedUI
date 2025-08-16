@@ -3322,13 +3322,26 @@ class AgentDB:
         name: str,
         credential_type: CredentialType,
         organization_id: str,
+        *,
+        item_id: str | None = None,
     ) -> Credential:
+        """Create a credential row.
+
+        If ``item_id`` is not provided, a UUID4 string is generated.
+        Returns a validated ``Credential`` pydantic model with a non-null ``item_id``.
+        """
+        # Local import to avoid adding a global dependency at module import time
+        from uuid import uuid4
+
+        if item_id is None:
+            item_id = str(uuid4())
+
         async with self.Session() as session:
             credential = CredentialModel(
                 organization_id=organization_id,
                 name=name,
                 credential_type=credential_type,
-                item_id=None,
+                item_id=item_id,
             )
             session.add(credential)
             await session.commit()

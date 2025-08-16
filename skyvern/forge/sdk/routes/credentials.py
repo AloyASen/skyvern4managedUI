@@ -12,7 +12,7 @@ from skyvern.forge.sdk.routes.code_samples import (
     SEND_TOTP_CODE_CODE_SAMPLE,
 )
 from skyvern.forge.sdk.routes.routers import base_router, legacy_base_router
-from skyvern.forge.sdk.schemas.credentials import (
+from skyvern.forge.sdk.schemas.credential import (
     CreateCredentialRequest,
     CredentialResponse,
     CredentialType,
@@ -22,6 +22,7 @@ from skyvern.forge.sdk.schemas.credentials import (
 from skyvern.forge.sdk.schemas.organizations import Organization
 from skyvern.forge.sdk.schemas.totp_codes import TOTPCode, TOTPCodeCreate
 from skyvern.forge.sdk.services import org_auth_service
+from skyvern.forge.sdk.services.credential import create_credential as create_credential_service
 
 LOG = structlog.get_logger()
 
@@ -130,8 +131,8 @@ async def create_credential(
     ),
     current_org: Organization = Depends(org_auth_service.get_current_org),
 ) -> CredentialResponse:
-    # Create base credential row
-    credential = await app.DATABASE.create_credential(
+    # Create base credential row with internally generated item_id
+    credential = await create_credential_service(
         organization_id=current_org.organization_id,
         name=data.name,
         credential_type=data.credential_type,
