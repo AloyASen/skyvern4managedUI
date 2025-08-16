@@ -18,6 +18,12 @@ Credentials in Postgres
   - `GET /v1/credentials/{id}`: Returns a single credential with masked info.
   - `POST /v1/credentials/{id}/delete`: Soft-deletes the credential and removes secret rows.
 
+- Item ID handling
+  - Every credential metadata row includes an `item_id` (string) used as an internal item identifier.
+  - Creation: `item_id` is generated server-side as a UUID4 and injected by a service (`skyvern/forge/sdk/services/credential`).
+  - Legacy data: If older rows exist with `item_id=NULL`, the DB layer backfills a UUID4 during `get_credential`/`get_credentials` and persists the value to prevent validation errors.
+  - Frontend: No changes required; clients do not need to supply `item_id`.
+
 - UI
   - Dashboard → Credentials: Add Password or Credit Card opens a modal; on save, data is stored in Postgres.
   - Workflow → Parameters → Credential: Only “Skyvern” is available. The dropdown lists credentials for the connected org and includes an “Add new credential” option that opens the same modal.
@@ -34,6 +40,7 @@ Credentials in Postgres
 - Migration
   - Apply Alembic revisions `aa21b4c0d5f1` (credential secret tables). Run `alembic upgrade head`.
   - External providers removed: `d49e4b8a5f3c` drops legacy Bitwarden/1Password tables. This is a breaking change for any existing data in those tables. Backup before upgrading if needed.
+  - Optional: Add a one-off migration to populate `item_id` for all existing rows if you prefer to avoid backfilling at read time. The runtime now safely backfills as needed.
 
 ## End‑to‑End Examples
 
